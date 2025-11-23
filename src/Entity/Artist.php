@@ -34,6 +34,12 @@ class Artist
     #[ORM\Column(length: 500, nullable: true)]
     private ?string $coverImage = null;
 
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+private array $albums = [];
+
+#[ORM\Column(type: Types::JSON, nullable: true)]
+private array $members = [];
+
     /**
      * @var Collection<int, Questions>
      */
@@ -166,4 +172,25 @@ class Artist
 
         return $this;
     }
+    public function getAlbums(): array
+{
+    return $this->albums;
+}
+
+public function setAlbums(array $albums): static
+{
+    $this->albums = $albums;
+    return $this;
+}
+
+public function getMembers(): array
+{
+    return $this->members;
+}
+
+public function setMembers(array $members): static
+{
+    $this->members = $members;
+    return $this;
+}
 }
