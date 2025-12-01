@@ -16,17 +16,20 @@ class Artist
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $name = null;
 
     #[ORM\Column(length: 36, nullable: true)]
     private ?string $mbid = null;
 
     #[ORM\Column(length: 100, nullable: true)]
-    private ?string $genre = null;
-
-    #[ORM\Column(length: 100, nullable: true)]
     private ?string $country = null;
+
+    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
+    private ?string $mainGenre = null;
+
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private array $subGenres = [];
 
     #[ORM\Column(nullable: true)]
     private ?int $foundedYear = null;
@@ -35,10 +38,10 @@ class Artist
     private ?string $coverImage = null;
 
     #[ORM\Column(type: Types::JSON, nullable: true)]
-private array $albums = [];
+    private array $albums = [];
 
-#[ORM\Column(type: Types::JSON, nullable: true)]
-private array $members = [];
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private array $members = [];
 
     /**
      * @var Collection<int, Questions>
@@ -54,20 +57,19 @@ private array $members = [];
         $this->questions = new ArrayCollection();
     }
 
+    // --- Getters et Setters ---
+
     public function getId(): ?int
     {
         return $this->id;
     }
-
     public function getName(): ?string
     {
         return $this->name;
     }
-
     public function setName(string $name): static
     {
         $this->name = $name;
-
         return $this;
     }
 
@@ -75,23 +77,29 @@ private array $members = [];
     {
         return $this->mbid;
     }
-
     public function setMbid(?string $mbid): static
     {
         $this->mbid = $mbid;
-
         return $this;
     }
 
-    public function getGenre(): ?string
+    public function getMainGenre(): ?string
     {
-        return $this->genre;
+        return $this->mainGenre;
+    }
+    public function setMainGenre(?string $mainGenre): static
+    {
+        $this->mainGenre = $mainGenre;
+        return $this;
     }
 
-    public function setGenre(?string $genre): static
+    public function getSubGenres(): array
     {
-        $this->genre = $genre;
-
+        return $this->subGenres ?? [];
+    }
+    public function setSubGenres(array $subGenres): static
+    {
+        $this->subGenres = $subGenres;
         return $this;
     }
 
@@ -99,11 +107,9 @@ private array $members = [];
     {
         return $this->country;
     }
-
     public function setCountry(?string $country): static
     {
         $this->country = $country;
-
         return $this;
     }
 
@@ -111,11 +117,9 @@ private array $members = [];
     {
         return $this->foundedYear;
     }
-
     public function setFoundedYear(?int $foundedYear): static
     {
         $this->foundedYear = $foundedYear;
-
         return $this;
     }
 
@@ -123,11 +127,29 @@ private array $members = [];
     {
         return $this->coverImage;
     }
-
     public function setCoverImage(?string $coverImage): static
     {
         $this->coverImage = $coverImage;
+        return $this;
+    }
 
+    public function getAlbums(): array
+    {
+        return $this->albums ?? [];
+    }
+    public function setAlbums(array $albums): static
+    {
+        $this->albums = array_map('strval', $albums);
+        return $this;
+    }
+
+    public function getMembers(): array
+    {
+        return $this->members ?? [];
+    }
+    public function setMembers(array $members): static
+    {
+        $this->members = $members;
         return $this;
     }
 
@@ -145,19 +167,16 @@ private array $members = [];
             $this->questions->add($question);
             $question->setArtist($this);
         }
-
         return $this;
     }
 
     public function removeQuestion(Questions $question): static
     {
         if ($this->questions->removeElement($question)) {
-            // set the owning side to null (unless already changed)
             if ($question->getArtist() === $this) {
                 $question->setArtist(null);
             }
         }
-
         return $this;
     }
 
@@ -165,32 +184,9 @@ private array $members = [];
     {
         return $this->biography;
     }
-
     public function setBiography(?string $biography): static
     {
         $this->biography = $biography;
-
         return $this;
     }
-    public function getAlbums(): array
-{
-    return $this->albums;
-}
-
-public function setAlbums(array $albums): static
-{
-    $this->albums = $albums;
-    return $this;
-}
-
-public function getMembers(): array
-{
-    return $this->members;
-}
-
-public function setMembers(array $members): static
-{
-    $this->members = $members;
-    return $this;
-}
 }

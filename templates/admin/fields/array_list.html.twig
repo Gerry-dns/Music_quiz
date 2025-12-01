@@ -1,0 +1,20 @@
+{% if field.value is iterable and field.value is not empty %}
+    <ul>
+        {% for item in field.value %}
+            {% if item is iterable %}
+                {# Pour members : afficher name et instruments #}
+                <li>
+                    {{ item.name|default('—') }}
+                    {% if item.instruments is defined and item.instruments is iterable and item.instruments|length > 0 %}
+                        ({{ item.instruments|join(', ') }})
+                    {% endif %}
+                </li>
+            {% else %}
+                {# Pour albums ou subGenres : simple string #}
+                <li>{{ item }}</li>
+            {% endif %}
+        {% endfor %}
+    </ul>
+{% else %}
+    —
+{% endif %}

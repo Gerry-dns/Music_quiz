@@ -3,6 +3,7 @@
 namespace App\Controller\Admin;
 
 use App\Entity\Artist;
+use App\Entity\Questions;
 use App\Service\MusicBrainzService;
 use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Dashboard;
@@ -49,5 +50,6 @@ class DashboardController extends AbstractDashboardController
     {
         yield MenuItem::linkToDashboard('Accueil', 'fa fa-home');
         yield MenuItem::linkToCrud('Artistes', 'fas fa-users', Artist::class);
+        yield MenuItem::linkToCrud('Questions', 'fas fa-question', Questions::class);
     }
 }

@@ -29,7 +29,7 @@ class Questions
     #[ORM\Column(length: 255)]
     private ?string $wrongAnswer3 = null;
 
-    #[ORM\Column]
+    #[ORM\Column(nullable: true)]
     private ?int $difficulty = null;
 
     #[ORM\Column(length: 100, nullable: true)]
@@ -41,14 +41,14 @@ class Questions
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $explanation = null;
 
-    #[ORM\Column]
+    #[ORM\Column(nullable: true)]
     private ?int $playedCount = null;
 
     #[ORM\Column]
     private ?int $correctCount = null;
 
     #[ORM\ManyToOne(inversedBy: 'questions')]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable:  true)]
     private ?Artist $artist = null;
 
     public function getId(): ?int

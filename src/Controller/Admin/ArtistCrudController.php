@@ -13,18 +13,15 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\ImageField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
-use EasyCorp\Bundle\EasyAdminBundle\Field\UrlField;
-use Symfony\Component\HttpFoundation\RedirectResponse;
-use Symfony\Component\HttpFoundation\RequestStack;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Field\ArrayField;
+use EasyCorp\Bundle\EasyAdminBundle\Field\Field;
+use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class ArtistCrudController extends AbstractCrudController
 {
-    public function __construct(
-        private HttpClientInterface $client,
-        private RequestStack $requestStack
-    ) {}
+    public function __construct(private HttpClientInterface $client) {}
 
     public static function getEntityFqcn(): string
     {
@@ -34,28 +31,122 @@ class ArtistCrudController extends AbstractCrudController
     public function configureFields(string $pageName): iterable
     {
         return [
+            IdField::new('id', 'ID'),
             TextField::new('name', 'Nom'),
-            TextField::new('mbid', 'MBID'),
-
-            TextField::new('genre', 'Genre'),
+            TextField::new('mbid', 'MBID')->hideOnIndex(),
+            TextField::new('mainGenre', 'Genre principal'),
             TextField::new('country', 'Pays'),
             IntegerField::new('foundedYear', 'Année de création'),
-
             TextareaField::new('biography', 'Biographie')->hideOnIndex(),
 
-            UrlField::new('coverImage', 'URL Pochette')
-                ->hideOnForm()
-                ->formatValue(fn($v) => $v
-                    ? '<img src="'.$v.'" width="80" height="80" style="object-fit:cover">'
-                    : '—'),
+            // UrlField::new('coverImage', 'URL Pochette')
+            //     ->hideOnForm()
+            //     ->formatValue(fn($v) => $v
+            //         ? '<img src="' . $v . '" width="80" height="80" style="object-fit:cover">'
+            //         : '—'),
 
-            ImageField::new('coverImage', 'Pochette')->onlyOnDetail(),
+            // ImageField::new('coverImage', 'Pochette')->onlyOnDetail(),
 
-            AssociationField::new('questions')->onlyOnDetail(),
+            // Champs ArrayField avec template personnalisé
+            ArrayField::new('albums', 'Albums')
+                ->onlyOnDetail()
+                ->setTemplatePath('admin/fields/array_list.html.twig'),
 
-            ArrayField::new('albums', 'Albums')->onlyOnDetail(),
-            ArrayField::new('members', 'Membres')->onlyOnDetail(),
+            // Field::new('members', 'Membres')
+            //     ->onlyOnDetail()
+            //     ->setTemplatePath('admin/fields/array_list.html.twig'),
+
+            Field::new('subGenres', 'Sous-genres')
+                ->onlyOnDetail()
+                ->setTemplatePath('admin/fields/array_list.html.twig'),
+
         ];
+    }
+
+
+
+    public function fetchFromMusicBrainz(EntityManagerInterface $em): RedirectResponse
+    {
+        $artist = $this->getContext()->getEntity()->getInstance();
+        $mbid = trim($artist->getMbid());
+
+        if (!$mbid || !preg_match('/^[0-9a-fA-F-]{36}$/', $mbid)) {
+            $this->addFlash('danger', 'MBID invalide');
+            return $this->redirect($this->generateUrl('admin', [
+                'crudAction' => 'edit',
+                'crudControllerFqcn' => self::class,
+                'entityId' => $artist->getId(),
+            ]));
+        }
+
+        try {
+            $response = $this->client->request('GET', "https://musicbrainz.org/ws/2/artist/{$mbid}", [
+                'headers' => ['User-Agent' => 'MusicQuiz/1.0'],
+                'query' => [
+                    'inc' => 'releases+artist-rels+tags+genres+aliases+annotation',
+                    'fmt' => 'json'
+                ],
+            ]);
+
+            $data = $response->toArray();
+
+            // Albums
+            $albums = array_map(fn($r) => $r['title'] ?? '', $data['releases'] ?? []);
+            $artist->setAlbums($albums);
+
+            // Membres
+            $members = [];
+            foreach ($data['relations'] ?? [] as $rel) {
+                if (($rel['type'] ?? '') === 'member of band' && isset($rel['artist']['name'])) {
+                    $members[] = [
+                        'name' => $rel['artist']['name'],
+                        'instruments' => $rel['attributes'] ?? [], // peut être vide
+                    ];
+                }
+            }
+            $artist->setMembers($members);
+
+            // Genres
+            $mainGenre = $data['type'] ?? '';
+            $subGenres = [];
+            if (!empty($data['tags'])) {
+                usort($data['tags'], fn($a, $b) => ($b['count'] ?? 0) <=> ($a['count'] ?? 0));
+                $mainGenre = $data['tags'][0]['name'] ?? $mainGenre;
+                foreach ($data['tags'] as $tag) {
+                    if (($tag['name'] ?? '') !== $mainGenre) {
+                        $subGenres[] = $tag['name'];
+                    }
+                }
+            }
+            $artist->setMainGenre($mainGenre);
+            $artist->setSubGenres($subGenres);
+
+            // Autres champs
+            $artist->setName($data['name'] ?? $artist->getName());
+            $artist->setCountry($data['area']['name'] ?? $artist->getCountry());
+
+            if (!empty($data['life-span']['begin'])) {
+                $artist->setFoundedYear((int) substr($data['life-span']['begin'], 0, 4));
+            }
+
+            if (!empty($data['releases'][0]['id'])) {
+                $releaseId = $data['releases'][0]['id'];
+                $artist->setCoverImage("https://coverartarchive.org/release/{$releaseId}/front-500.jpg");
+            }
+
+            $em->flush();
+            $this->addFlash('success', 'Données récupérées !');
+        } catch (\Exception $e) {
+            $this->addFlash('danger', 'Erreur MusicBrainz : ' . $e->getMessage());
+        }
+
+        return $this->redirect($this->generateUrl('admin', [
+            'crudAction' => 'edit',
+            'crudControllerFqcn' => self::class,
+            'entityId' => $artist->getId(),
+
+
+        ]));
     }
 
     public function configureActions(Actions $actions): Actions
@@ -65,84 +156,8 @@ class ArtistCrudController extends AbstractCrudController
             ->addCssClass('btn btn-success');
 
         return $actions
-            ->add(Crud::PAGE_EDIT, $fetch)
+             ->add(Crud::PAGE_EDIT, $fetch)
             ->add(Crud::PAGE_INDEX, Action::DETAIL);
-    }
-
-   public function fetchFromMusicBrainz(EntityManagerInterface $em): RedirectResponse
-{
-    $artist = $this->getContext()->getEntity()->getInstance();
-    $mbid = $this->getMbidFromForm() ?? $artist->getMbid();
-
-    if (!$mbid || strlen(trim($mbid)) !== 36) {
-        $this->addFlash('danger', 'MBID invalide');
-        return $this->redirect($this->generateUrl('admin', [
-            'crudAction' => 'edit',
-            'crudControllerFqcn' => self::class,
-            'entityId' => $artist->getId(),
-        ]));
-    }
-
-    try {
-        $response = $this->client->request('GET', "https://musicbrainz.org/ws/2/artist/{$mbid}", [
-            'headers' => ['User-Agent' => 'MusicQuiz/1.0'],
-            'query' => [
-                'inc' => 'releases+artist-rels',
-                'fmt' => 'json'
-            ],
-        ]);
-
-        $data = $response->toArray();
-
-        $albums = [];
-        foreach ($data['releases'] ?? [] as $release) {
-            $albums[] = $release['title'];
-        }
-
-        $members = [];
-        foreach ($data['relations'] ?? [] as $rel) {
-            if (($rel['type'] ?? '') === 'member of band' && isset($rel['artist']['name'])) {
-                $members[] = $rel['artist']['name'];
-            }
-        }
-
-        $artist->setName($data['name'] ?? $artist->getName());
-        $artist->setGenre($data['type'] ?? $artist->getGenre());
-        $artist->setCountry($data['area']['name'] ?? $artist->getCountry());
-        $artist->setAlbums($albums);
-        $artist->setMembers($members);
-
-        if (isset($data['life-span']['begin'])) {
-            $artist->setFoundedYear((int) substr($data['life-span']['begin'], 0, 4));
-        }
-
-        if (!empty($data['releases'][0]['id'])) {
-            $releaseId = $data['releases'][0]['id'];
-            $artist->setCoverImage("https://coverartarchive.org/release/{$releaseId}/front-500.jpg");
-        }
-
-        $em->flush();
-        $this->addFlash('success', 'Données récupérées !');
-
-    } catch (\Exception $e) {
-        $this->addFlash('danger', $e->getMessage());
-    }
-
-    return $this->redirect($this->generateUrl('admin', [
-        'crudAction' => 'edit',
-        'crudControllerFqcn' => self::class,
-        'entityId' => $artist->getId(),
-    ]));
-}
-
-
-    private function getMbidFromForm(): ?string
-    {
-        $req = $this->requestStack->getCurrentRequest();
-        if (!$req) return null;
-
-        $form = $req->request->all('ea')['editForm'] ?? $req->request->all('ea')['newForm'] ?? null;
-
-        return $form['mbid'] ?? null;
+    
     }
 }
