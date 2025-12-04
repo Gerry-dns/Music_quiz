@@ -14,6 +14,7 @@ final class QuizController extends AbstractController
     public function index(EntityManagerInterface $em): Response
     {
         $questions = $em->getRepository(Questions::class)->findAll();
+        $questions = $questions[0] ?? null;
         return $this->render('quiz/index.html.twig', [
             'questions' => $questions,
         ]);

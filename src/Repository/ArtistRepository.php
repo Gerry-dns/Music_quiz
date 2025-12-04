@@ -16,28 +16,41 @@ class ArtistRepository extends ServiceEntityRepository
         parent::__construct($registry, Artist::class);
     }
 
-//    /**
-//     * @return Artist[] Returns an array of Artist objects
-//     */
-//    public function findByExampleField($value): array
-//    {
-//        return $this->createQueryBuilder('a')
-//            ->andWhere('a.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->orderBy('a.id', 'ASC')
-//            ->setMaxResults(10)
-//            ->getQuery()
-//            ->getResult()
-//        ;
-//    }
+    /**
+     * Récupère un ou plusieurs artistes au hasard
+     *
+     * @param int $limit
+     * @return Artist[]
+     */
+    public function findRandomArtists(int $limit = 1): array
+{
+    $conn = $this->getEntityManager()->getConnection();
 
-//    public function findOneBySomeField($value): ?Artist
-//    {
-//        return $this->createQueryBuilder('a')
-//            ->andWhere('a.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->getQuery()
-//            ->getOneOrNullResult()
-//        ;
-//    }
+    // On insère directement le nombre dans la requête
+    $sql = 'SELECT id FROM artist ORDER BY RAND() LIMIT ' . (int)$limit;
+    $stmt = $conn->prepare($sql);
+
+    // DBAL 3 : executeQuery() retourne un Result
+    $result = $stmt->executeQuery();
+
+    // Récupérer tous les résultats en tableau associatif
+    $rows = $result->fetchAllAssociative();
+
+    // Transformer en objets Artist
+    $artists = [];
+    foreach ($rows as $row) {
+        $artists[] = $this->find($row['id']);
+    }
+
+    return $artists;
+}
+
+
+    /**
+     * Récupère un artiste par son MBID
+     */
+    public function findOneByMbid(string $mbid): ?Artist
+    {
+        return $this->findOneBy(['mbid' => $mbid]);
+    }
 }

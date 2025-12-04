@@ -42,6 +42,7 @@ class MusicBrainzService
 
             $data = $response->toArray();
 
+
             // Genres : principal et sous-genres
             $mainGenre = $data['type'] ?? '';
             $subGenres = [];

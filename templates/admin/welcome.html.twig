@@ -1,10 +1,56 @@
 {% extends '@EasyAdmin/page/content.html.twig' %}
 
-{% block content_title %}Music Quiz – Tableau de bord{% endblock %}
+{% block content %}
 
-{% block main %}
-    <div class="text-center mt-5">
-        <h1>🎵 Bienvenue dans l’admin de ton quiz musique !</h1>
-        <p class="lead">Utilise le menu à gauche pour gérer les artistes et les questions.</p>
-    </div>
+
+	{% if artist %}
+		<div class="d-flex justify-content-center">
+			<div class="card mb-4 shadow-sm" style="max-width: 500px; width: 100%;">
+
+				{% if artist['coverImage'] is defined and artist['coverImage'] %}
+					<img src="{{ artist['coverImage'] }}" class="card-img-top" alt="{{ artist['name'] }}">
+					dd
+				{% endif %}
+				<div class="card-body">
+					<h5 class="card-title">{{ artist.name }}</h5>
+					<p>
+						<strong>Genre principal:</strong>
+						{{ artist.mainGenre }}</p>
+					<p>
+						{% if artist.subGenres %}
+							<p>
+								<strong>Sous-genres:</strong>
+								{{ artist.subGenres|join(', ') }}</p>
+						{% endif %}
+						{% if artist.members %}
+							<p>
+								<strong>Membres:</strong>
+								{{ artist.members|map(m => m.name)|join(', ') }}
+							</p>
+						{% endif %}
+						<strong>Pays:</strong>
+						{{ artist.country }}</p>
+                        <strong>Ville de formation:</strong>
+                        <p>{{ artist.beginArea }}</p>
+					<p>
+						<strong>Année de création:</strong>
+						{{ artist.foundedYear }}</p>
+					<p>
+						<strong>Biographie:</strong>
+						{{ artist.biography }}</p>
+
+
+					{% if artist.albums %}
+						<p>
+							<strong>Albums:</strong>
+							{{ artist.albums|join(', ') }}</p>
+					{% endif %}
+
+					<a href="{{ path('admin') }}" class="btn btn-primary mt-2">Changer d'artiste</a>
+				</div>
+			</div>
+		</div>
+	{% else %}
+		<p>Aucun artiste disponible.</p>
+	{% endif %}
 {% endblock %}

@@ -1,0 +1,38 @@
+{% if field.value is iterable %}
+    <ul class="ea-array-list" style="margin:0; padding-left:18px;">
+        {% for item in field.value %}
+            {% if item is iterable %}
+                <li>
+                    {{ item|json_encode(constant('JSON_UNESCAPED_UNICODE')) }}
+                </li>
+            {% else %}
+                <li>{{ item }}</li>
+            {% endif %}
+        {% endfor %}
+    </ul>
+        <ul class="ea-array-list" style="margin:0; padding-left:18px; list-style:disc;">
+        {% for item in field.value %}
+
+            {# 🔹 Cas 1 : simple string (sous-genres, albums...) #}
+            {% if item is not iterable %}
+                <li>{{ item }}</li>
+
+            {# 🔹 Cas 2 : objet membre : {"name": "...", "instruments": [...] } #}
+            {% elseif item.name is defined %}
+                <li>
+                    <strong>{{ item.name }}</strong>
+                    {% if item.instruments is iterable and item.instruments|length > 0 %}
+                        — <em>{{ item.instruments|join(', ') }}</em>
+                    {% endif %}
+                </li>
+
+            {# 🔹 Cas 3 : autre tableau complexe => fallback #}
+            {% else %}
+                <li>{{ item|json_encode(constant('JSON_UNESCAPED_UNICODE')) }}</li>
+            {% endif %}
+
+        {% endfor %}
+    </ul>
+{% else %}
+    <span class="badge bg-secondary">Aucune donnée</span>
+{% endif %}

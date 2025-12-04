@@ -4,13 +4,13 @@ namespace App\Controller\Admin;
 
 use App\Entity\Artist;
 use App\Entity\Questions;
-use App\Service\MusicBrainzService;
 use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Dashboard;
 use EasyCorp\Bundle\EasyAdminBundle\Config\MenuItem;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractDashboardController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use App\Service\MusicBrainzService;
 
 class DashboardController extends AbstractDashboardController
 {
@@ -23,23 +23,26 @@ class DashboardController extends AbstractDashboardController
         $this->em = $em;
     }
 
-    #[Route('/admin', name: 'admin')]
-    public function index(): Response
-    {
-        // On récupère tous les artistes depuis la base
-        $artists = $this->em->getRepository(Artist::class)->findAll();
+// DashboardController.php
+#[Route('/admin', name: 'admin')]
+public function index(): Response
+{
+    $artists = $this->em->getRepository(Artist::class)->findRandomArtists(1);
+    $artist = $artists[0] ?? null;
 
-        $artistsData = [];
-        foreach ($artists as $artist) {
-            if ($artist->getMbid()) {
-                $artistsData[] = $this->mbService->getArtistData($artist->getMbid());
-            }
-        }
+  
+    $question = $this->em->getRepository(Questions::class)
+        ->createQueryBuilder('q')
+        ->setMaxResults(1)
+        ->getQuery()
+        ->getOneOrNullResult();
 
-        return $this->render('admin/welcome.html.twig', [
-            'artists' => $artistsData
-        ]);
-    }
+    return $this->render('admin/welcome.html.twig', [
+        'question' => $question,
+           'artist' => $artist,
+    ]);
+}
+
 
     public function configureDashboard(): Dashboard
     {
@@ -51,5 +54,21 @@ class DashboardController extends AbstractDashboardController
         yield MenuItem::linkToDashboard('Accueil', 'fa fa-home');
         yield MenuItem::linkToCrud('Artistes', 'fas fa-users', Artist::class);
         yield MenuItem::linkToCrud('Questions', 'fas fa-question', Questions::class);
+        yield MenuItem::linkToRoute('Tester le Quiz', 'fas fa-flask', 'admin_quiz_test');
+    }
+
+    #[Route('/admin/quiz_test', name: 'admin_quiz_test')]
+    public function quizTest(): Response
+    {
+        $questions = $this->em->getRepository(Questions::class)
+            ->createQueryBuilder('q')
+            ->setMaxResults(5)
+            ->getQuery()
+            ->getResult();
+
+        return $this->render('admin/quiz_test.html.twig', [
+            'questions' => $questions
+        ]);
     }
 }
+

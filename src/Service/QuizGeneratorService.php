@@ -18,43 +18,29 @@ class QuizGeneratorService
     public function generateQuestionsForArtist(Artist $artist): void
     {
         $questions = [];
-        // --- 1️⃣ Questions Albums --- 5 premières albums
-        $albums = array_slice($artist->getAlbums(), 0, 2);
+
+        // --- 1️⃣ Questions Albums --- 5 premiers albums
+        $albums = array_slice($artist->getAlbums(), 0, 1);
 
         foreach ($albums as $album) {
+            $wrongAnswers = $this->getRandomArtistsNames($artist->getName(), 3);
+
             $question = new Questions();
             $question->setText("Qui a sorti l'album « {$album} » ?");
             $question->setCorrectAnswer($artist->getName());
-            $question->setWrongAnswer1($this->getRandomArtistName($artist->getName()));
-            $question->setWrongAnswer2($this->getRandomArtistName($artist->getName()));
-            $question->setWrongAnswer3($this->getRandomArtistName($artist->getName()));
+            $question->setWrongAnswer1($wrongAnswers[0] ?? 'Artiste inconnu');
+            $question->setWrongAnswer2($wrongAnswers[1] ?? 'Artiste inconnu');
+            $question->setWrongAnswer3($wrongAnswers[2] ?? 'Artiste inconnu');
             $question->setDifficulty(2);
             $question->setCategory('album');
             $question->setArtist($artist);
-
             $question->setPlayedCount(0);
             $question->setCorrectCount(0);
 
             $questions[] = $question;
         }
 
-        // // --- 2️⃣ Questions Membres/Instrument ---
-        // foreach ($artist->getMembers() as $member) {
-        //     foreach ($member['instruments'] ?? [] as $instrument) {
-        //         $question = new Questions();
-        //         $question->setText("Qui joue du {$instrument} dans « {$artist->getName()} » ?");
-        //         $question->setCorrectAnswer($member['name']);
-        //         $question->setWrongAnswer1($this->getRandomMemberName($member['name']));
-        //         $question->setWrongAnswer2($this->getRandomMemberName($member['name']));
-        //         $question->setWrongAnswer3($this->getRandomMemberName($member['name']));
-        //         $question->setDifficulty(3);
-        //         $question->setCategory('membre');
-        //         $question->setArtist($artist);
-        //         $questions[] = $question;
-        //     }
-        // }
-
-        // --- 3️⃣ Question Année de formation ---
+        // --- 2️⃣ Question Année de formation ---
         if ($artist->getFoundedYear()) {
             $year = $artist->getFoundedYear();
             $question = new Questions();
@@ -66,14 +52,13 @@ class QuizGeneratorService
             $question->setDifficulty(2);
             $question->setCategory('année');
             $question->setArtist($artist);
-
             $question->setPlayedCount(0);
             $question->setCorrectCount(0);
 
             $questions[] = $question;
         }
 
-        // --- 4️⃣ Question Genre ---
+        // --- 3️⃣ Question Genre principal ---
         if ($artist->getMainGenre()) {
             $question = new Questions();
             $question->setText("Quel est le genre principal de « {$artist->getName()} » ?");
@@ -84,11 +69,57 @@ class QuizGeneratorService
             $question->setDifficulty(1);
             $question->setCategory('genre');
             $question->setArtist($artist);
-
             $question->setPlayedCount(0);
             $question->setCorrectCount(0);
 
             $questions[] = $question;
+        }
+
+        // --- 4️⃣ Question Lieu de début (begin-area) ---
+        $beginArea = $artist->getBeginArea(); // "London"
+        if ($beginArea) {
+            $question = new Questions();
+            $question->setText("Où a débuté le groupe « {$artist->getName()} » ?");
+            $question->setCorrectAnswer($beginArea);
+
+            $wrongAreas = $this->getRandomAreas($beginArea, 3);
+            $question->setWrongAnswer1($wrongAreas[0] ?? 'Inconnue');
+            $question->setWrongAnswer2($wrongAreas[1] ?? 'Inconnue');
+            $question->setWrongAnswer3($wrongAreas[2] ?? 'Inconnue');
+
+            $question->setDifficulty(1);
+            $question->setCategory('begin-area');
+            $question->setArtist($artist);
+            $question->setPlayedCount(0);
+            $question->setCorrectCount(0);
+
+            $questions[] = $question;
+        }
+
+        // --- 5️⃣ Question Membres du groupe ---
+        $members = $artist->getMembers(); // chaque membre = ['name' => ..., 'instruments' => ...]
+        if (!empty($members)) {
+            $randomKey = array_rand($members);
+            $member = $members[$randomKey];
+
+            $memberName = $member['name'] ?? null;
+            if ($memberName) {
+                $wrongAnswers = $this->getRandomArtistsNames($artist->getName(), 3);
+
+                $question = new Questions();
+                $question->setText("{$memberName} est le membre du groupe :");
+                $question->setCorrectAnswer($artist->getName());
+                $question->setWrongAnswer1($wrongAnswers[0] ?? 'Artiste inconnu');
+                $question->setWrongAnswer2($wrongAnswers[1] ?? 'Artiste inconnu');
+                $question->setWrongAnswer3($wrongAnswers[2] ?? 'Artiste inconnu');
+                $question->setDifficulty(2);
+                $question->setCategory('membre');
+                $question->setArtist($artist);
+                $question->setPlayedCount(0);
+                $question->setCorrectCount(0);
+
+                $questions[] = $question;
+            }
         }
 
         // --- Persister toutes les questions ---
@@ -99,9 +130,24 @@ class QuizGeneratorService
     }
 
     // -----------------------------
-    // Méthodes pour générer des réponses aléatoires
+    // Génération de réponses aléatoires
     // -----------------------------
-    private function getRandomArtistName(string $exclude): string
+    private function getRandomAreas(string $correct, int $count = 3): array
+    {
+        $allAreas = [
+            'London', 'New York', 'Los Angeles', 'Paris', 'Berlin',
+            'Tokyo', 'São Paulo', 'Mexico City', 'Toronto', 'Sydney',
+            'Madrid', 'Rome', 'Chicago', 'Dublin', 'Amsterdam',
+            'Stockholm', 'Lisbon', 'Melbourne'
+        ];
+
+        $areas = array_diff($allAreas, [$correct]);
+        shuffle($areas);
+
+        return array_slice($areas, 0, $count);
+    }
+
+    private function getRandomArtistsNames(string $exclude, int $count = 3): array
     {
         $artists = $this->em->getRepository(Artist::class)
             ->createQueryBuilder('a')
@@ -110,40 +156,14 @@ class QuizGeneratorService
             ->getQuery()
             ->getResult();
 
-        if (!$artists) {
-            return 'Artiste Aléatoire';
-        }
+        $names = array_map(fn($a) => $a->getName(), $artists);
+        shuffle($names);
 
-        $randomArtist = $artists[array_rand($artists)];
-        return $randomArtist->getName();
+        return array_slice($names, 0, $count);
     }
-
-
-
-    // private function getRandomMemberName(string $exclude): string
-    // {
-    //     // Pour simplifier, on peut prendre un membre aléatoire depuis tous les artistes
-    //     $members = [];
-    //     $allArtists = $this->em->getRepository(Artist::class)->findAll();
-
-    //     foreach ($allArtists as $artist) {
-    //         foreach ($artist->getMembers() as $member) {
-    //             if ($member['name'] !== $exclude) {
-    //                 $members[] = $member['name'];
-    //             }
-    //         }
-    //     }
-
-    //     if (!$members) {
-    //         return 'Membre Aléatoire';
-    //     }
-
-    //     return $members[array_rand($members)];
-    // }
 
     private function getRandomGenre(string $exclude): string
     {
-        // Liste fixe de genres, à remplacer par une table Genres si tu veux plus tard
         $genres = ['rock', 'pop', 'jazz', 'electronic', 'hip hop', 'indie', 'folk', 'metal', 'blues'];
         $genres = array_filter($genres, fn($g) => $g !== $exclude);
 
