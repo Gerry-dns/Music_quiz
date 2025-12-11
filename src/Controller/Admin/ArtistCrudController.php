@@ -19,13 +19,17 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use App\Service\MusicBrainzService;
 use App\Service\ArtistPopulatorService;
-
+use App\Service\QuizGeneratorService;
+use EasyCorp\Bundle\EasyAdminBundle\Context\AdminContext;
+use EasyCorp\Bundle\EasyAdminBundle\Router\AdminUrlGenerator;
 
 class ArtistCrudController extends AbstractCrudController
 {
     public function __construct(
         private HttpClientInterface $client,
-        private \App\Service\WikipediaByNameService $wiki
+        private \App\Service\WikipediaByNameService $wiki,
+        private QuizGeneratorService $quizGenerator,
+        private AdminUrlGenerator $urlGenerator,
     ) {}
 
     public static function getEntityFqcn(): string
@@ -145,8 +149,36 @@ class ArtistCrudController extends AbstractCrudController
             ->linkToCrudAction('fetchFromMusicBrainz')
             ->addCssClass('btn btn-success');
 
+        $generateQuiz = Action::new('generateQuiz', 'Générer quiz', 'fa fa-magic')
+            ->linkToCrudAction('generateQuiz')
+            ->addCssClass('btn btn-primary');
+
         return $actions
             ->add(Crud::PAGE_EDIT, $fetch)
+            ->add(Crud::PAGE_EDIT, $generateQuiz)
             ->add(Crud::PAGE_INDEX, Action::DETAIL);
+    }
+
+    public function generateQuiz(AdminContext $context): RedirectResponse
+    {
+        /** @var Artist $artist */
+        $artist = $context->getEntity()->getInstance();
+
+        if (!$artist) {
+            $this->addFlash('danger', 'Artiste introuvable');
+            return $this->redirect($this->urlGenerator->setAction(Action::INDEX)->generateUrl());
+        }
+
+        $this->quizGenerator->generateQuestionsForArtist($artist);
+        $this->addFlash('success', 'Questions générées pour : ' . $artist->getName());
+
+        // Redirection vers la page de détails de l’artiste
+        return $this->redirect(
+            $this->urlGenerator
+                ->setController(self::class)
+                ->setAction(Action::DETAIL)
+                ->setEntityId($artist->getId())
+                ->generateUrl()
+        );
     }
 }

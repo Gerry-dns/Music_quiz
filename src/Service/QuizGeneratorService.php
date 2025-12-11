@@ -40,23 +40,23 @@ class QuizGeneratorService
             $questions[] = $question;
         }
 
-        // --- 2️⃣ Question Année de formation ---
-        if ($artist->getFoundedYear()) {
-            $year = $artist->getFoundedYear();
-            $question = new Questions();
-            $question->setText("En quelle année s'est formé « {$artist->getName()} » ?");
-            $question->setCorrectAnswer((string) $year);
-            $question->setWrongAnswer1((string) ($year + 2));
-            $question->setWrongAnswer2((string) ($year - 6));
-            $question->setWrongAnswer3((string) ($year + 5));
-            $question->setDifficulty(2);
-            $question->setCategory('année');
-            $question->setArtist($artist);
-            $question->setPlayedCount(0);
-            $question->setCorrectCount(0);
+        // // --- 2️⃣ Question Année de formation ---
+        // if ($artist->getFoundedYear()) {
+        //     $year = $artist->getFoundedYear();
+        //     $question = new Questions();
+        //     $question->setText("En quelle année s'est formé « {$artist->getName()} » ?");
+        //     $question->setCorrectAnswer((string) $year);
+        //     $question->setWrongAnswer1((string) ($year + 2));
+        //     $question->setWrongAnswer2((string) ($year - 6));
+        //     $question->setWrongAnswer3((string) ($year + 5));
+        //     $question->setDifficulty(2);
+        //     $question->setCategory('année');
+        //     $question->setArtist($artist);
+        //     $question->setPlayedCount(0);
+        //     $question->setCorrectCount(0);
 
-            $questions[] = $question;
-        }
+        //     $questions[] = $question;
+        // }
 
         // --- 3️⃣ Question Genre principal ---
         if ($artist->getMainGenre()) {

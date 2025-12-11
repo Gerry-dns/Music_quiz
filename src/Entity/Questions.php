@@ -44,7 +44,7 @@ class Questions
     #[ORM\Column(nullable: true)]
     private ?int $playedCount = null;
 
-    #[ORM\Column]
+    #[ORM\Column(nullable: true)]
     private ?int $correctCount = null;
 
     #[ORM\ManyToOne(inversedBy: 'questions')]
