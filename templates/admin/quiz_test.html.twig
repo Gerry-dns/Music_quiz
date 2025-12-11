@@ -1,115 +1,239 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Quiz{% endblock %}
+{% block title %}Quiz
+{% endblock %}
 
 {% block body %}
-<div class="quiz-container">
-    <h1>🎵 Quiz Musical</h1>
+	<div class="quiz-container">
+		<h1>🎵 Quiz Musical</h1>
 
-    {% if questions %}
-        {% set q = questions[0] %}   {# On prend la première question #}
+		{% if questions %}
+			<div id="quiz">
+				{% for q in questions %}
+					<div class="question-card" data-index="{{ loop.index0 }}" style="{% if loop.first %}display:block{% else %}display:none{% endif %}">
+						<h2>{{ q.text }}</h2>
+						{% set answers = [q.correctAnswer, q.wrongAnswer1, q.wrongAnswer2, q.wrongAnswer3]|shuffle %}
+						<ul class="answers">
+							{% for answer in answers %}
+								<li onclick="checkAnswer(this, '{{ q.correctAnswer|e('js') }}')">{{ answer }}</li>
+							{% endfor %}
+						</ul>
+					</div>
+				{% endfor %}
+			</div>
 
-        <div class="question-card">
-            <h2>{{ q.text }}</h2>
+			<div id="feedback" class="feedback"></div>
+			<button id="nextBtn" style="display:none;" onclick="nextQuestion()">Suivant</button>
+			<button id="restartBtn" style="display:none;" onclick="restartQuiz()">Recommencer</button>
+		{% else %}
+			<p>Aucune question disponible pour le moment.</p>
+		{% endif %}
+	</div>
 
-            {% set answers = [
-                q.correctAnswer,
-                q.wrongAnswer1,
-                q.wrongAnswer2,
-                q.wrongAnswer3
-            ] | shuffle %}
+	 <script>
+	let currentIndex = 0;
+	const questions = document.querySelectorAll('.question-card');
+	const feedback = document.getElementById('feedback');
+	const nextBtn = document.getElementById('nextBtn');
+	const restartBtn = document.getElementById('restartBtn');
+	
+	function checkAnswer(el, correct) {
+	    if (el.textContent.trim() === correct.trim()) {
+	        el.classList.add('correct');
+	        feedback.textContent = "✅ Correct !";
+	        feedback.classList.remove('wrong');
+	        feedback.classList.add('correct');
+	    } else {
+	        el.classList.add('wrong');
+	        feedback.textContent = "❌ Mauvaise réponse. La bonne était : " + correct;
+	        feedback.classList.remove('correct');
+	        feedback.classList.add('wrong');
+	    }
+	
+	    // Désactive les autres réponses
+	    const items = el.parentNode.querySelectorAll('li');
+	    items.forEach(i => i.onclick = null);
+	
+	    // Affiche le bouton suivant
+	    nextBtn.style.display = 'inline-block';
+	}
+	
+	function nextQuestion() {
+	    // Masquer la question actuelle
+	    questions[currentIndex].style.display = 'none';
+	
+	    // Masquer le feedback et le bouton suivant
+	    feedback.textContent = '';
+	    feedback.classList.remove('correct', 'wrong');
+	    nextBtn.style.display = 'none';
+	
+	    // Passer à la question suivante
+	    currentIndex++;
+	    if (currentIndex < questions.length) {
+	        questions[currentIndex].style.display = 'block';
+	    } else {
+	        // Fin du quiz : ne supprime plus les questions, juste cacher
+	        questions.forEach(q => q.style.display = 'none');
+	        feedback.textContent = "🎉 Vous avez terminé le quiz !";
+	        restartBtn.style.display = 'inline-block';
+	    }
+	}
+	
+	
+	function restartQuiz() {
+	    currentIndex = 0;
+	    questions.forEach((q, i) => {
+	        q.style.display = i === 0 ? 'block' : 'none';
+	        const items = q.querySelectorAll('li');
+	        const correctAnswer = q.querySelector('h2').textContent;
+	        items.forEach(li => {
+	            li.classList.remove('correct', 'wrong');
+	            li.onclick = function() {
+	                checkAnswer(this, correctAnswer);
+	            };
+	        });
+	    });
+	
+	    feedback.textContent = '';
+	    feedback.classList.remove('correct', 'wrong');
+	
+	    nextBtn.style.display = 'none';
+	    restartBtn.style.display = 'none';
+	}
+	</script>
 
-            <ul class="answers">
-            {% for answer in answers %}
-                <li onclick="checkAnswer(this, '{{ q.correctAnswer }}')">
-                    {{ answer }}
-                </li>
-            {% endfor %}
-            </ul>
-        </div>
+	<style>
+		.quiz-container {
+			max-width: 600px;
+			margin: 2rem auto;
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+			text-align: center;
+		}
+		.question-card {
+			background: #f8f8f8;
+			padding: 2rem;
+			border-radius: 12px;
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+			margin-bottom: 1rem;
+		}
+		.answers {
+			list-style: none;
+			padding: 0;
+			margin-top: 1rem;
+		}
+		.answers li {
+			background: #fff;
+			margin: 0.5rem 0;
+			padding: 0.8rem;
+			border-radius: 8px;
+			cursor: pointer;
+			border: 1px solid #ddd;
+			transition: all 0.2s;
+		}
+		.answers li:hover {
+			background: #f0f0f0;
+			transform: translateY(-2px);
+		}
+		.correct {
+			background: #c8e6c9 !important;
+			border-color: #388e3c !important;
+			color: #2e7d32;
+		}
+		.wrong {
+			background: #ffcdd2 !important;
+			border-color: #d32f2f !important;
+			color: #b71c1c;
+		}
+		.feedback {
+			font-weight: bold;
+			margin-top: 1rem;
+			font-size: 1.2rem;
+		}
+		#nextBtn,
+		#restartBtn {
+			margin-top: 1rem;
+			padding: 0.5rem 1rem;
+			border: none;
+			background-color: #1976d2;
+			color: #fff;
+			border-radius: 6px;
+			cursor: pointer;
+		}
+		#nextBtn:hover,
+		#restartBtn:hover {
+			background-color: #1565c0;
+		}
+	</style>
+{% endblock %}
+{% block styles %}
 
-        <div id="feedback" class="feedback"></div>
+	<style>
+		.quiz-container {
+			max-width: 600px;
+			margin: 2rem auto;
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+			text-align: center;
+		}
 
-    {% else %}
-        <p>Aucune question disponible pour le moment.</p>
-    {% endif %}
-</div>
+		.question-card {
+			background: #f8f8f8;
+			padding: 2rem;
+			border-radius: 12px;
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+			margin-bottom: 1rem;
+		}
 
-<script>
-function checkAnswer(el, correct) {
-    const feedback = document.getElementById('feedback');
+		.answers {
+			list-style: none;
+			padding: 0;
+			margin-top: 1rem;
+		}
 
-    if (el.textContent === correct) {
-        el.classList.add('correct');
-        feedback.textContent = "✅ Correct !";
-        feedback.classList.remove('wrong');
-        feedback.classList.add('correct');
-    } else {
-        el.classList.add('wrong');
-        feedback.textContent = "❌ Mauvaise réponse. La bonne était : " + correct;
-        feedback.classList.remove('correct');
-        feedback.classList.add('wrong');
-    }
+		.answers li {
+			background: #fff;
+			margin: 0.5rem 0;
+			padding: 0.8rem;
+			border-radius: 8px;
+			cursor: pointer;
+			border: 1px solid #ddd;
+			transition: all 0.2s;
+		}
 
-    // Désactive les autres réponses
-    const items = el.parentNode.querySelectorAll('li');
-    items.forEach(i => i.onclick = null);
-}
-</script>
+		.answers li:hover {
+			background: #f0f0f0;
+			transform: translateY(-2px);
+		}
 
-<style>
-.quiz-container {
-    max-width: 600px;
-    margin: 2rem auto;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    text-align: center;
-}
+		.correct {
+			background: #c8e6c9 !important;
+			border-color: #388e3c !important;
+			color: #2e7d32;
+		}
 
-.question-card {
-    background: #f8f8f8;
-    padding: 2rem;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    margin-bottom: 1rem;
-}
+		.wrong {
+			background: #ffcdd2 !important;
+			border-color: #d32f2f !important;
+			color: #b71c1c;
+		}
 
-.answers {
-    list-style: none;
-    padding: 0;
-    margin-top: 1rem;
-}
+		.feedback {
+			font-weight: bold;
+			margin-top: 1rem;
+			font-size: 1.2rem;
+		}
 
-.answers li {
-    background: #fff;
-    margin: 0.5rem 0;
-    padding: 0.8rem;
-    border-radius: 8px;
-    cursor: pointer;
-    border: 1px solid #ddd;
-    transition: all 0.2s;
-}
+		#nextBtn {
+			margin-top: 1rem;
+			padding: 0.5rem 1rem;
+			border: none;
+			background-color: #1976d2;
+			color: #fff;
+			border-radius: 6px;
+			cursor: pointer;
+		}
 
-.answers li:hover {
-    background: #f0f0f0;
-    transform: translateY(-2px);
-}
-
-.correct {
-    background: #c8e6c9 !important;
-    border-color: #388e3c !important;
-    color: #2e7d32;
-}
-
-.wrong {
-    background: #ffcdd2 !important;
-    border-color: #d32f2f !important;
-    color: #b71c1c;
-}
-
-.feedback {
-    font-weight: bold;
-    margin-top: 1rem;
-    font-size: 1.2rem;
-}
-</style>
+		#nextBtn:hover {
+			background-color: #1565c0;
+		}
+	</style>
 {% endblock %}
