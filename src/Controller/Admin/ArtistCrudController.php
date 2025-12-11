@@ -122,6 +122,7 @@ class ArtistCrudController extends AbstractCrudController
 
         try {
             $data = $mbService->getArtistData($mbid);
+            $data['annotation'] = $this->wiki->fetchSummaryByName($artist->getName())['summary'] ?? null;
             $populator->populateFromMusicBrainz($artist, $data);
             $em->flush();
 
