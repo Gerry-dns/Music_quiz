@@ -30,6 +30,11 @@ public function index(): Response
     $artists = $this->em->getRepository(Artist::class)->findRandomArtists(1);
     $artist = $artists[0] ?? null;
 
+     if ($artist) {
+        // Supprimer les doublons dans les albums
+        $artist->setAlbums(array_unique($artist->getAlbums() ?? []));
+    }
+
   
     $question = $this->em->getRepository(Questions::class)
         ->createQueryBuilder('q')

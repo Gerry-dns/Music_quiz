@@ -7,11 +7,11 @@ use Doctrine\ORM\Mapping as ORM;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: \App\Repository\ArtistRepository::class)]
 #[ORM\Table(name: 'artist')]
 class Artist
 {
-    #[ORM\Id]
+     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
     private ?int $id = null;
@@ -21,9 +21,6 @@ class Artist
 
     #[ORM\Column(type: 'string', length: 36, nullable: true)]
     private ?string $mbid = null;
-
-    #[ORM\Column(type: 'integer', nullable: true)]
-    private ?int $foundedYear = null;
 
     #[ORM\Column(type: 'string', length: 255, nullable: true)]
     private ?string $coverImage = null;
@@ -42,6 +39,10 @@ class Artist
 
     #[ORM\Column(type: 'string', length: 255, nullable: true)]
     private ?string $beginArea = null;
+
+    #[ORM\Column(type: 'json', nullable: true)]
+    private array $lifeSpan = [];
+    
 
     #[ORM\Column(type: 'string', length: 255, nullable: true)]
     private ?string $youtubeUrl = null;
@@ -120,16 +121,6 @@ class Artist
         return $this;
     }
 
-    public function getFoundedYear(): ?int
-    {
-        return $this->foundedYear;
-    }
-
-    public function setFoundedYear(?int $year): self
-    {
-        $this->foundedYear = $year;
-        return $this;
-    }
 
     public function getCoverImage(): ?string
     {
@@ -197,6 +188,17 @@ class Artist
         return $this;
     }
 
+        public function getLifeSpan(): ?array
+    {
+        return $this->lifeSpan;
+    }
+
+    public function setLifespan(?array $lifeSpan): self
+    {
+        $this->lifeSpan = $lifeSpan;
+        return $this;
+    }
+
     public function getYoutubeUrl(): ?string { return $this->youtubeUrl; }
     public function setYoutubeUrl(?string $url): self { $this->youtubeUrl = $url; return $this; }
 
@@ -244,6 +246,12 @@ class Artist
 
     public function getMainGenre(): ?Genre { return $this->mainGenre; }
     public function setMainGenre(?Genre $genre): self { $this->mainGenre = $genre; return $this; }
+
+    public function __toString(): string
+{
+    return $this->name ?? '';
+}
+
 }
 
 

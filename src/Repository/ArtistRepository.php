@@ -23,28 +23,33 @@ class ArtistRepository extends ServiceEntityRepository
      * @return Artist[]
      */
     public function findRandomArtists(int $limit = 1): array
-{
-    $conn = $this->getEntityManager()->getConnection();
+    {
+        $conn = $this->getEntityManager()->getConnection();
 
-    // On insère directement le nombre dans la requête
-    $sql = 'SELECT id FROM artist ORDER BY RAND() LIMIT ' . (int)$limit;
-    $stmt = $conn->prepare($sql);
+        // Récupérer tous les IDs des artistes
+        $sql = 'SELECT id FROM artist';
+        $stmt = $conn->prepare($sql);
+        $result = $stmt->executeQuery();
+        $rows = $result->fetchAllAssociative();
 
-    // DBAL 3 : executeQuery() retourne un Result
-    $result = $stmt->executeQuery();
+        if (!$rows) {
+            return [];
+        }
 
-    // Récupérer tous les résultats en tableau associatif
-    $rows = $result->fetchAllAssociative();
+        // Extraire les IDs
+        $allIds = array_column($rows, 'id');
 
-    // Transformer en objets Artist
-    $artists = [];
-    foreach ($rows as $row) {
-        $artists[] = $this->find($row['id']);
+        // Mélanger les IDs et prendre le nombre demandé
+        shuffle($allIds);
+        $randomIds = array_slice($allIds, 0, $limit);
+
+        // Récupérer les artistes correspondants
+        return $this->createQueryBuilder('a')
+            ->andWhere('a.id IN (:ids)')
+            ->setParameter('ids', $randomIds)
+            ->getQuery()
+            ->getResult();
     }
-
-    return $artists;
-}
-
 
     /**
      * Récupère un artiste par son MBID

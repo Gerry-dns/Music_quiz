@@ -71,6 +71,15 @@ class MusicBrainzService
                         'instruments' => is_array($rel['attribute-list'] ?? null) ? $rel['attribute-list'] : [],
                     ];
                 }
+                // Life-span complet
+                $lifeSpan = [
+                    'begin' => $data['life-span']['begin'] ?? null,
+                    'ended' => $data['life-span']['ended'] ?? false,
+                    'end'   => $data['life-span']['end'] ?? null,
+                ];
+
+                // Begin-area (ville de formation)
+                $beginArea = $data['begin-area']['name'] ?? null;
             }
 
             return [
@@ -84,6 +93,8 @@ class MusicBrainzService
                 'members' => $members,
                 'aliases' => array_map(fn($a) => $a['name'], $data['aliases'] ?? []),
                 'annotation' => $data['annotation'] ?? null,
+                'lifeSpan' => $lifeSpan,
+                'beginArea' => $beginArea,
             ];
         } catch (\Exception $e) {
             return [

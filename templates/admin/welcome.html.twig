@@ -13,6 +13,10 @@
 				{% endif %}
 				<div class="card-body">
 					<h5 class="card-title">{{ artist.name }}</h5>
+					<div class="image text-center mb-3">
+						<img src="{{ artist.coverImage }}" alt="{{ artist.name }}" class="img-fluid rounded shadow-sm" style="max-width: 50%; width: 100%; height: auto;" loading="lazy">
+					</div>
+
 					<p>
 						<strong>Genre principal:</strong>
 						{{ artist.mainGenre }}</p>
@@ -30,23 +34,24 @@
 						{% endif %}
 						<strong>Pays:</strong>
 						{{ artist.country }}</p>
-                        <strong>Ville de formation:</strong>
-                        <p>{{ artist.beginArea }}</p>
-					<p>
-						<strong>Année de création:</strong>
-						{{ artist.foundedYear }}</p>
-					<p>
-						<strong>Biographie:</strong>
-						{{ artist.biography }}</p>
+					<strong>Ville de formation:</strong>
+					<p>{{ artist.beginArea }}</p>
+					{# <p>
+											<strong>Année de création:</strong>
+											{{ artist.lifeSpan.begin  }}</p>
+										<p> #}
+					<strong>Biographie:</strong>
+					{{ artist.biography }}</p>
 
 
-					{% if artist.albums %}
-						<p>
-							<strong>Albums:</strong>
-							{{ artist.albums|join(', ') }}</p>
+				{% if artist.albums %}
+					<p>
+						<strong>Albums:</strong>
+						{{ artist.albums|join(' | ') }}
 					{% endif %}
-
-					<a href="{{ path('admin') }}" class="btn btn-primary mt-2">Changer d'artiste</a>
+					<div class="container">
+						<a href="{{ path('admin') }}" class="btn btn-primary mt-2">Changer d'artiste</a>
+					</div>
 				</div>
 			</div>
 		</div>

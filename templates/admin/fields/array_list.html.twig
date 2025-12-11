@@ -1,17 +1,19 @@
 {% if field.value is iterable and field.value is not empty %}
     <ul>
-        {% for item in field.value %}
-            {% if item is iterable %}
-                {# Pour members : afficher name et instruments #}
+        {% for k, v in field.value %}
+            {% if v is iterable and v.name is defined %}
+                {# Pour members #}
                 <li>
-                    {{ item.name|default('—') }}
-                    {% if item.instruments is defined and item.instruments is iterable and item.instruments|length > 0 %}
-                        ({{ item.instruments|join(', ') }})
+                    {{ v.name|default('—') }}
+                    {% if v.instruments is defined and v.instruments is iterable and v.instruments|length > 0 %}
+                        ({{ v.instruments|join(', ') }})
                     {% endif %}
                 </li>
             {% else %}
-                {# Pour albums ou subGenres : simple string #}
-                <li>{{ item }}</li>
+                {# Pour albums, subGenres ou lifeSpan #}
+                <li>
+                    <strong>{{ k|capitalize }}:</strong> {{ v }}
+                </li>
             {% endif %}
         {% endfor %}
     </ul>
