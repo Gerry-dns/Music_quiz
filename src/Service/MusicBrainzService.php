@@ -35,14 +35,14 @@ class MusicBrainzService
             $response = $this->client->request('GET', "https://musicbrainz.org/ws/2/artist/{$mbid}", [
                 'headers' => ['User-Agent' => 'MusicQuiz/1.0'],
                 'query' => [
-                    'inc' => 'releases+artist-rels+tags+genres+recordings+aliases',
+                    'inc' => 'releases+artist-rels+tags+genres+recordings+aliases+url-rels',
                     'fmt' => 'json',
                 ],
             ]);
 
             $data = $response->toArray();
-            
-    // dd($data);  
+
+
 
             // Genres : principal et sous-genres
             $mainGenre = $data['type'] ?? '';
@@ -81,6 +81,14 @@ class MusicBrainzService
 
                 // Begin-area (ville de formation)
                 $beginArea = $data['begin-area']['name'] ?? null;
+
+                $urls = [];
+                foreach ($data['relations'] ?? [] as $rel) {
+                    if (!empty($rel['url']['resource'])) {
+                        $key = strtolower(str_replace(' ', '_', $rel['type']));
+                        $urls[$key] = $rel['url']['resource'];
+                    }
+                }
             }
 
             return [
@@ -96,6 +104,7 @@ class MusicBrainzService
                 'annotation' => $data['annotation'] ?? null,
                 'lifeSpan' => $lifeSpan,
                 'beginArea' => $beginArea,
+                'urls' => $urls,
             ];
         } catch (\Exception $e) {
             return [
@@ -113,6 +122,4 @@ class MusicBrainzService
             ];
         }
     }
-
-    
 }

@@ -168,27 +168,40 @@ class ArtistCrudController extends AbstractCrudController
                 'mbid' => $mbid,
                 'data' => $data,
             ]);
-            // 3️⃣ Injection des données MusicBrainz restantes
 
+            // 2️⃣ Récupérer les URLs existantes
+            $urls = $artist->getUrls() ?? [];
+
+            // 3️⃣ Ajouter les URLs depuis MusicBrainz
+            foreach ($data['urls'] ?? [] as $type => $link) {
+                if ($link) {
+                    $key = strtolower(str_replace(' ', '_', $type));
+                    $urls[$key] = $link;
+                }
+            }
+
+            // 4️⃣ Ajouter le lien Wikipédia
             $summaryData = $this->wiki->fetchSummaryByName($artist->getName());
-
             if ($summaryData) {
+                // Biographie (uniquement résumé)
                 $artist->setBiography([
                     'source'  => 'wikipedia',
                     'summary' => $summaryData['summary'] ?? null,
                 ]);
 
+                // Couverture si image dispo
                 if (!empty($summaryData['image'])) {
                     $artist->setCoverImage($summaryData['image']);
                 }
-                // Ajoute le lien Wikipedia dans urls
-                $artistUrls = $artist->getUrls(); // récupère l'existant
-                $artistUrls['wikipedia'] = 'https://' . ($summaryData['lang'] ?? 'fr') . '.wikipedia.org/wiki/' . str_replace(' ', '_', $artist->getName());
-                $artist->setUrls($artistUrls);
+
+                // Wikipedia dans urls
+                $urls['wikipedia'] = 'https://' . ($summaryData['lang'] ?? 'fr') . '.wikipedia.org/wiki/' . str_replace(' ', '_', $artist->getName());
             }
 
+            // 5️⃣ Mettre à jour l'entité avec toutes les URLs
+            $artist->setUrls($urls);
 
-            // 4️⃣ Sauvegarde
+            // 6️⃣ Sauvegarde en base
             $em->flush();
 
             $this->addFlash('success', sprintf(
@@ -198,6 +211,7 @@ class ArtistCrudController extends AbstractCrudController
         } catch (\Exception $e) {
             $this->addFlash('danger', 'Erreur : ' . $e->getMessage());
         }
+
 
         return $this->redirect($this->generateUrl('admin', [
             'crudAction' => 'edit',
