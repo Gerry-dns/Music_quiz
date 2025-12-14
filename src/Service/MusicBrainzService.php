@@ -35,13 +35,14 @@ class MusicBrainzService
             $response = $this->client->request('GET', "https://musicbrainz.org/ws/2/artist/{$mbid}", [
                 'headers' => ['User-Agent' => 'MusicQuiz/1.0'],
                 'query' => [
-                    'inc' => 'releases+artist-rels+tags+genres+recordings+aliases+annotation',
+                    'inc' => 'releases+artist-rels+tags+genres+recordings+aliases',
                     'fmt' => 'json',
                 ],
             ]);
 
             $data = $response->toArray();
-
+            
+    // dd($data);  
 
             // Genres : principal et sous-genres
             $mainGenre = $data['type'] ?? '';
@@ -112,4 +113,6 @@ class MusicBrainzService
             ];
         }
     }
+
+    
 }

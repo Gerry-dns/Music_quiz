@@ -60,7 +60,6 @@ class ArtistPopulatorService
             $artist->setCountry(null);
         }
 
-        // Biographie / annotation
-        $artist->setBiography($data['annotation'] ?? null);
+      
     }
 }

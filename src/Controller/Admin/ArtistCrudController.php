@@ -14,14 +14,18 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\AssociationField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\CollectionField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\ImageField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use App\Service\MusicBrainzService;
 use App\Service\ArtistPopulatorService;
 use App\Service\QuizGeneratorService;
+use App\Service\WikipediaByNameService;
 use EasyCorp\Bundle\EasyAdminBundle\Context\AdminContext;
+use EasyCorp\Bundle\EasyAdminBundle\Field\TextEditorField;
 use EasyCorp\Bundle\EasyAdminBundle\Router\AdminUrlGenerator;
+use Psr\Log\LoggerInterface;
 
 class ArtistCrudController extends AbstractCrudController
 {
@@ -37,9 +41,11 @@ class ArtistCrudController extends AbstractCrudController
         return Artist::class;
     }
 
+
+
     public function configureFields(string $pageName): iterable
     {
-        return [
+        $fields = [
             TextField::new('name', 'Nom'),
             TextField::new('mbid', 'MBID')->hideOnIndex(),
 
@@ -51,7 +57,11 @@ class ArtistCrudController extends AbstractCrudController
             ImageField::new('coverImage', 'Image')
                 ->setBasePath('')
                 ->onlyOnDetail(),
-            TextareaField::new('biography', 'Biographie')->hideOnIndex(),
+            ArrayField::new('biography', 'Biographie')->hideOnIndex(),
+            // Bouton pour la bio complète (AJAX)
+
+
+
             ArrayField::new('albums', 'Albums')->onlyOnDetail()->setTemplatePath('admin/fields/array_list.html.twig'),
             ArrayField::new('subGenres', 'Sous-genres')->onlyOnDetail()->setTemplatePath('admin/fields/array_list.html.twig'),
             ArrayField::new('members', 'Membres')->onlyOnDetail()->setTemplatePath('admin/fields/array_list.html.twig'),
@@ -60,24 +70,41 @@ class ArtistCrudController extends AbstractCrudController
                 ->allowAdd()
                 ->allowDelete()
                 ->onlyOnForms(),
-            TextField::new('spotifyUrl')->onlyOnDetail(),
-
-            TextField::new('youtubeUrl', 'YouTube')
-                ->onlyOnDetail()
-                ->formatValue(function ($value) {
-                    if (!$value) return '—';
-                    return sprintf('<a href="%s" target="_blank">%s</a>', $value, $value);
-                })
-                ->setFormTypeOption('attr', ['class' => 'ea-link']), // important pour que le HTML soit interprété
-
-            TextField::new('wikidataUrl')->onlyOnDetail(),
-            TextField::new('deezerUrl')->onlyOnDetail(),
-            TextField::new('bandcampUrl')->onlyOnDetail(),
             ArrayField::new('lifeSpan', 'Life Span')
                 ->onlyOnDetail()
                 ->setTemplatePath('admin/fields/array_list.html.twig'),
 
         ];
+
+        $artist = $this->getContext()?->getEntity()?->getInstance();
+        if ($artist) {
+            $bio = $artist->getBiography();
+            // dd($bio);
+        }
+        if ($artist) {
+            $urls = $artist->getUrls(); // toutes les URLs
+            foreach ($urls as $platform => $link) {
+                if ($link) {
+                    $fields[] = TextField::new($platform)
+                        ->onlyOnDetail()
+                        ->formatValue(fn($v) => sprintf('<a href="%s" target="_blank">%s</a>', $v, $v))
+                        ->setFormTypeOption('attr', ['class' => 'ea-link']);
+                }
+            }
+        }
+        return $fields;
+    }
+
+    /**
+     * Helper pour récupérer la valeur d'un champ depuis l'entité courante.
+     */
+    private function getEntityFieldValue(string $field)
+    {
+        $entity = $this->getContext()?->getEntity()?->getInstance();
+        if (!$entity) return null;
+
+        $getter = 'get' . ucfirst($field);
+        return method_exists($entity, $getter) ? $entity->$getter() : null;
     }
 
     private function curlRequest(string $url, array $query): ?array
@@ -110,11 +137,17 @@ class ArtistCrudController extends AbstractCrudController
         return null;
     }
 
-    public function fetchFromMusicBrainz(EntityManagerInterface $em, MusicBrainzService $mbService, ArtistPopulatorService $populator): RedirectResponse
-    {
+    public function fetchFromMusicBrainz(
+        EntityManagerInterface $em,
+        MusicBrainzService $mbService,
+        ArtistPopulatorService $populator,
+        LoggerInterface $logger,
+        WikipediaByNameService $wikiService,
+    ): RedirectResponse {
         $artist = $this->getContext()->getEntity()->getInstance();
         $mbid = trim($artist->getMbid());
 
+        // Vérification MBID
         if (!$mbid || !preg_match('/^[0-9a-fA-F-]{36}$/', $mbid)) {
             $this->addFlash('danger', 'MBID invalide');
             return $this->redirect($this->generateUrl('admin', [
@@ -125,12 +158,43 @@ class ArtistCrudController extends AbstractCrudController
         }
 
         try {
+            // 1️⃣ Récupération des données MusicBrainz
             $data = $mbService->getArtistData($mbid);
-            $data['annotation'] = $this->wiki->fetchSummaryByName($artist->getName())['summary'] ?? null;
             $populator->populateFromMusicBrainz($artist, $data);
+
+            // Logging brut
+            $logger->info('Données MusicBrainz récupérées', [
+                'artistId' => $artist->getId(),
+                'mbid' => $mbid,
+                'data' => $data,
+            ]);
+            // 3️⃣ Injection des données MusicBrainz restantes
+
+            $summaryData = $this->wiki->fetchSummaryByName($artist->getName());
+
+            if ($summaryData) {
+                $artist->setBiography([
+                    'source'  => 'wikipedia',
+                    'summary' => $summaryData['summary'] ?? null,
+                ]);
+
+                if (!empty($summaryData['image'])) {
+                    $artist->setCoverImage($summaryData['image']);
+                }
+                // Ajoute le lien Wikipedia dans urls
+                $artistUrls = $artist->getUrls(); // récupère l'existant
+                $artistUrls['wikipedia'] = 'https://' . ($summaryData['lang'] ?? 'fr') . '.wikipedia.org/wiki/' . str_replace(' ', '_', $artist->getName());
+                $artist->setUrls($artistUrls);
+            }
+
+
+            // 4️⃣ Sauvegarde
             $em->flush();
 
-            $this->addFlash('success', 'Données récupérées depuis MusicBrainz !');
+            $this->addFlash('success', sprintf(
+                'Données récupérées depuis MusicBrainz + Wikipédia pour "%s".',
+                $artist->getName()
+            ));
         } catch (\Exception $e) {
             $this->addFlash('danger', 'Erreur : ' . $e->getMessage());
         }
@@ -153,11 +217,23 @@ class ArtistCrudController extends AbstractCrudController
             ->linkToCrudAction('generateQuiz')
             ->addCssClass('btn btn-primary');
 
+        $viewOnSite = Action::new('viewOnSite', 'Voir sur site')
+            ->linkToUrl(
+                fn(Artist $artist) => $this->generateUrl(
+                    'artist_detail',      // nom de la route publique
+                    ['id' => $artist->getId()],
+                    UrlGeneratorInterface::ABSOLUTE_URL
+                )
+            )
+            ->addCssClass('btn btn-primary');
+
         return $actions
             ->add(Crud::PAGE_EDIT, $fetch)
             ->add(Crud::PAGE_EDIT, $generateQuiz)
-            ->add(Crud::PAGE_INDEX, Action::DETAIL);
+            ->add(Crud::PAGE_INDEX, Action::DETAIL)
+            ->add(Crud::PAGE_DETAIL, $viewOnSite); // <- corrigé ici
     }
+
 
     public function generateQuiz(AdminContext $context): RedirectResponse
     {

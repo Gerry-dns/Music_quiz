@@ -11,7 +11,7 @@ use Doctrine\Common\Collections\Collection;
 #[ORM\Table(name: 'artist')]
 class Artist
 {
-     #[ORM\Id]
+    #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
     private ?int $id = null;
@@ -31,8 +31,9 @@ class Artist
     #[ORM\Column(type: 'json', nullable: true)]
     private array $members = [];
 
-    #[ORM\Column(type: 'text', nullable: true)]
-    private ?string $biography = null;
+    #[ORM\Column(type: 'json', nullable: true)]
+    private array $biography = [];
+
 
     #[ORM\Column(type: 'json', nullable: true)]
     private array $subGenres = [];
@@ -42,43 +43,10 @@ class Artist
 
     #[ORM\Column(type: 'json', nullable: true)]
     private array $lifeSpan = [];
-    
 
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
-    private ?string $youtubeUrl = null;
+    #[ORM\Column(type: 'json', nullable: true)]
+    private array $urls = [];
 
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
-    private ?string $wikidataUrl = null;
-
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
-    private ?string $spotifyUrl = null;
-
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
-    private ?string $deezerUrl = null;
-
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
-    private ?string $bandcampUrl = null;
-
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
-    private ?string $discogsUrl = null;
-
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
-    private ?string $officialSiteUrl = null;
-
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
-    private ?string $soundcloudUrl = null;
-
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
-    private ?string $lastfmUrl = null;
-
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
-    private ?string $twitterUrl = null;
-
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
-    private ?string $facebookUrl = null;
-
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
-    private ?string $instagramUrl = null;
 
     #[ORM\Column(type: 'string', length: 255, nullable: true)]
     private ?string $disambiguation = null;
@@ -93,6 +61,14 @@ class Artist
     #[ORM\ManyToOne(targetEntity: Genre::class)]
     #[ORM\JoinColumn(name: 'main_genre_id', referencedColumnName: 'id', nullable: true)]
     private ?Genre $mainGenre = null;
+
+    #[ORM\PostLoad]
+    public function initUrls(): void
+    {
+        if ($this->urls === null) {
+            $this->urls = [];
+        }
+    }
 
     public function getId(): ?int
     {
@@ -155,14 +131,15 @@ class Artist
         return $this;
     }
 
-    public function getBiography(): ?string
+    public function getBiography(): array
     {
-        return $this->biography;
+        return $this->biography ?? [];
     }
 
-    public function setBiography(?string $bio): self
+
+    public function setBiography(?array $biography): self
     {
-        $this->biography = $bio;
+        $this->biography = $biography;
         return $this;
     }
 
@@ -188,7 +165,7 @@ class Artist
         return $this;
     }
 
-        public function getLifeSpan(): ?array
+    public function getLifeSpan(): ?array
     {
         return $this->lifeSpan;
     }
@@ -199,60 +176,60 @@ class Artist
         return $this;
     }
 
-    public function getYoutubeUrl(): ?string { return $this->youtubeUrl; }
-    public function setYoutubeUrl(?string $url): self { $this->youtubeUrl = $url; return $this; }
 
-    public function getWikidataUrl(): ?string { return $this->wikidataUrl; }
-    public function setWikidataUrl(?string $url): self { $this->wikidataUrl = $url; return $this; }
 
-    public function getSpotifyUrl(): ?string { return $this->spotifyUrl; }
-    public function setSpotifyUrl(?string $url): self { $this->spotifyUrl = $url; return $this; }
+    public function getDisambiguation(): ?string
+    {
+        return $this->disambiguation;
+    }
+    public function setDisambiguation(?string $text): self
+    {
+        $this->disambiguation = $text;
+        return $this;
+    }
 
-    public function getDeezerUrl(): ?string { return $this->deezerUrl; }
-    public function setDeezerUrl(?string $url): self { $this->deezerUrl = $url; return $this; }
+    public function getType(): ?string
+    {
+        return $this->type;
+    }
+    public function setType(?string $type): self
+    {
+        $this->type = $type;
+        return $this;
+    }
 
-    public function getBandcampUrl(): ?string { return $this->bandcampUrl; }
-    public function setBandcampUrl(?string $url): self { $this->bandcampUrl = $url; return $this; }
+    public function getCountry(): ?Country
+    {
+        return $this->country;
+    }
+    public function setCountry(?Country $country): self
+    {
+        $this->country = $country;
+        return $this;
+    }
 
-    public function getDiscogsUrl(): ?string { return $this->discogsUrl; }
-    public function setDiscogsUrl(?string $url): self { $this->discogsUrl = $url; return $this; }
-
-    public function getOfficialSiteUrl(): ?string { return $this->officialSiteUrl; }
-    public function setOfficialSiteUrl(?string $url): self { $this->officialSiteUrl = $url; return $this; }
-
-    public function getSoundcloudUrl(): ?string { return $this->soundcloudUrl; }
-    public function setSoundcloudUrl(?string $url): self { $this->soundcloudUrl = $url; return $this; }
-
-    public function getLastfmUrl(): ?string { return $this->lastfmUrl; }
-    public function setLastfmUrl(?string $url): self { $this->lastfmUrl = $url; return $this; }
-
-    public function getTwitterUrl(): ?string { return $this->twitterUrl; }
-    public function setTwitterUrl(?string $url): self { $this->twitterUrl = $url; return $this; }
-
-    public function getFacebookUrl(): ?string { return $this->facebookUrl; }
-    public function setFacebookUrl(?string $url): self { $this->facebookUrl = $url; return $this; }
-
-    public function getInstagramUrl(): ?string { return $this->instagramUrl; }
-    public function setInstagramUrl(?string $url): self { $this->instagramUrl = $url; return $this; }
-
-    public function getDisambiguation(): ?string { return $this->disambiguation; }
-    public function setDisambiguation(?string $text): self { $this->disambiguation = $text; return $this; }
-
-    public function getType(): ?string { return $this->type; }
-    public function setType(?string $type): self { $this->type = $type; return $this; }
-
-    public function getCountry(): ?Country { return $this->country; }
-    public function setCountry(?Country $country): self { $this->country = $country; return $this; }
-
-    public function getMainGenre(): ?Genre { return $this->mainGenre; }
-    public function setMainGenre(?Genre $genre): self { $this->mainGenre = $genre; return $this; }
+    public function getMainGenre(): ?Genre
+    {
+        return $this->mainGenre;
+    }
+    public function setMainGenre(?Genre $genre): self
+    {
+        $this->mainGenre = $genre;
+        return $this;
+    }
 
     public function __toString(): string
-{
-    return $this->name ?? '';
+    {
+        return $this->name ?? '';
+    }
+    public function getUrls(): array
+    {
+        return $this->urls ?? [];
+    }
+
+    public function setUrls(array $urls): self
+    {
+        $this->urls = $urls;
+        return $this;
+    }
 }
-
-}
-
-
-
