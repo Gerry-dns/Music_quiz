@@ -1,5 +1,4 @@
 <?php
-
 // src/Service/ArtistPopulatorService.php
 namespace App\Service;
 
@@ -32,14 +31,33 @@ class ArtistPopulatorService
             $artist->setMainGenre(null);
         }
 
-        // Sub-genres (on garde les strings ici)
+        // Sub-genres (on garde les strings)
         $artist->setSubGenres($data['subGenres'] ?? []);
 
         // Albums
         $artist->setAlbums($data['albums'] ?? []);
 
-        // Members
-        $artist->setMembers($data['members'] ?? []);
+        $existingMembers = $artist->getMembers() ?? [];
+        foreach ($data['members'] ?? [] as $member) {
+            $name = $member['name'];
+            $found = false;
+            foreach ($existingMembers as &$ex) {
+                if ($ex['name'] === $name) {
+                    // Fusion instruments
+                    $ex['instruments'] = array_unique(array_merge(
+                        $ex['instruments'] ?? [],
+                        $member['instruments'] ?? []
+                    ));
+                    $found = true;
+                    break;
+                }
+            }
+            if (!$found) {
+                $existingMembers[] = $member;
+            }
+        }
+        $artist->setMembers($existingMembers);
+
 
         // Life span
         $artist->setLifeSpan($data['lifeSpan'] ?? []);
@@ -59,7 +77,5 @@ class ArtistPopulatorService
         } else {
             $artist->setCountry(null);
         }
-
-      
     }
 }

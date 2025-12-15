@@ -115,6 +115,87 @@ class ArtistCrudController extends AbstractCrudController
         return $result ? json_decode($result, true) : null;
     }
 
+    /**
+     * Helper pour récupérer le label d'un item Wikidata via l'API JSON.
+     */
+    private function fetchWikidataLabel(string $itemId, string $lang = 'en'): ?string
+    {
+        $url = "https://www.wikidata.org/wiki/Special:EntityData/{$itemId}.json";
+        try {
+            $response = file_get_contents($url);
+            if (!$response) return null;
+            $data = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
+            return $data['entities'][$itemId]['labels'][$lang]['value'] ?? null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    private function fetchMembersFromWikidataSPARQL(string $wikidataId): array
+    {
+        $endpoint = 'https://query.wikidata.org/sparql';
+
+        $query = <<<SPARQL
+PREFIX wd: <http://www.wikidata.org/entity/>
+PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?memberLabel ?instrumentLabel WHERE {
+    wd:$wikidataId wdt:P527 ?member .
+    OPTIONAL { ?member wdt:P1303 ?instrument . }
+    SERVICE wikibase:label { bd:serviceParam wikibase:language "fr,en". }
+}
+SPARQL;
+
+        $response = $this->client->request('GET', $endpoint, [
+            'headers' => ['Accept' => 'application/sparql-results+json'],
+            'query' => ['query' => $query],
+        ]);
+
+        $data = $response->toArray();
+
+        $result = [];
+
+        foreach ($data['results']['bindings'] as $row) {
+            $name = $row['memberLabel']['value'] ?? null;
+            $instrument = $row['instrumentLabel']['value'] ?? null;
+
+            if ($name) {
+                // Initialise le tableau instruments si besoin
+                if (!isset($result[$name])) {
+                    $result[$name] = [];
+                }
+                // Ajoute l'instrument s'il existe et n'est pas déjà présent
+                if ($instrument && !in_array($instrument, $result[$name])) {
+                    $result[$name][] = $instrument;
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    private array $instrumentMap = [
+        'guitare' => ['guitare', 'guitare basse', 'guitare électrique', 'guitare acoustique'],
+        'batterie' => ['batterie', 'percussions'],
+        'voix' => ['voix', 'chant', 'harmonica'],
+        'clavier' => ['clavier', 'piano', 'orgue', 'instrument à clavier'],
+    ];
+
+    private function getMainInstrument(string $instr): ?string
+    {
+        $instrLower = strtolower($instr);
+        foreach ($this->instrumentMap as $main => $variants) {
+            foreach ($variants as $variant) {
+                if (str_contains($instrLower, strtolower($variant))) {
+                    return $main;
+                }
+            }
+        }
+        return null;
+    }
+
+
     private function safeRequest(string $url, array $query, int $retry = 3): ?array
     {
         while ($retry > 0) {
@@ -160,19 +241,71 @@ class ArtistCrudController extends AbstractCrudController
         try {
             // 1️⃣ Récupération des données MusicBrainz
             $data = $mbService->getArtistData($mbid);
+
+            // 2️⃣ Extraire l'URL Wikidata si elle existe
+            $wikidataUrl = $artist->getUrls()['wikidata'] ?? null;
+            $wikidataId = $wikidataUrl ? basename($wikidataUrl) : null;
+
+            // 3️⃣ Récupérer les membres existants
+            $members = $artist->getMembers() ?? [];
+            $existingNames = array_column($members, 'name');
+
+            if ($wikidataId) {
+                // 3a️⃣ Récupération des membres depuis Wikidata
+                $wikidataMembers = $this->fetchMembersFromWikidataSPARQL($wikidataId);
+
+                // 3b️⃣ Traitement pour obtenir type principal et détails
+                $membersProcessed = [];
+                foreach ($wikidataMembers as $name => $instruments) {
+                    $main = [];
+                    foreach ($instruments as $instr) {
+                        $mainType = $this->getMainInstrument($instr);
+                        if ($mainType) $main[$mainType] = true;
+                    }
+                    $membersProcessed[$name] = [
+                        'main' => array_keys($main), // types principaux
+                        'details' => $instruments    // instruments complets
+                    ];
+                }
+
+                // 3c️⃣ Fusionner les instruments et types principaux pour les membres existants
+                foreach ($members as &$member) {
+                    $name = $member['name'];
+                    if (isset($membersProcessed[$name])) {
+                        $member['instruments'] = array_unique(array_merge(
+                            $member['instruments'] ?? [],
+                            $membersProcessed[$name]['details']
+                        ));
+                        $member['mainInstruments'] = $membersProcessed[$name]['main'];
+                    }
+                }
+
+                // 3d️⃣ Ajouter les membres présents uniquement dans Wikidata
+                foreach ($membersProcessed as $name => $info) {
+                    if (!in_array($name, $existingNames)) {
+                        $members[] = [
+                            'name' => $name,
+                            'instruments' => $info['details'],
+                            'mainInstruments' => $info['main']
+                        ];
+                    }
+                }
+
+                $artist->setMembers($members);
+            }
+
+            // 4️⃣ Populer l'artiste avec MusicBrainz
             $populator->populateFromMusicBrainz($artist, $data);
 
-            // Logging brut
+            // 5️⃣ Logging
             $logger->info('Données MusicBrainz récupérées', [
                 'artistId' => $artist->getId(),
                 'mbid' => $mbid,
                 'data' => $data,
             ]);
 
-            // 2️⃣ Récupérer les URLs existantes
+            // 6️⃣ Récupérer et fusionner les URLs
             $urls = $artist->getUrls() ?? [];
-
-            // 3️⃣ Ajouter les URLs depuis MusicBrainz
             foreach ($data['urls'] ?? [] as $type => $link) {
                 if ($link) {
                     $key = strtolower(str_replace(' ', '_', $type));
@@ -180,28 +313,24 @@ class ArtistCrudController extends AbstractCrudController
                 }
             }
 
-            // 4️⃣ Ajouter le lien Wikipédia
+            // 7️⃣ Ajouter Wikipédia
             $summaryData = $this->wiki->fetchSummaryByName($artist->getName());
             if ($summaryData) {
-                // Biographie (uniquement résumé)
                 $artist->setBiography([
-                    'source'  => 'wikipedia',
+                    'source' => 'wikipedia',
                     'summary' => $summaryData['summary'] ?? null,
                 ]);
 
-                // Couverture si image dispo
                 if (!empty($summaryData['image'])) {
                     $artist->setCoverImage($summaryData['image']);
                 }
 
-                // Wikipedia dans urls
                 $urls['wikipedia'] = 'https://' . ($summaryData['lang'] ?? 'fr') . '.wikipedia.org/wiki/' . str_replace(' ', '_', $artist->getName());
             }
 
-            // 5️⃣ Mettre à jour l'entité avec toutes les URLs
             $artist->setUrls($urls);
 
-            // 6️⃣ Sauvegarde en base
+            // 8️⃣ Sauvegarde en base
             $em->flush();
 
             $this->addFlash('success', sprintf(
@@ -211,7 +340,6 @@ class ArtistCrudController extends AbstractCrudController
         } catch (\Exception $e) {
             $this->addFlash('danger', 'Erreur : ' . $e->getMessage());
         }
-
 
         return $this->redirect($this->generateUrl('admin', [
             'crudAction' => 'edit',
@@ -240,6 +368,8 @@ class ArtistCrudController extends AbstractCrudController
                 )
             )
             ->addCssClass('btn btn-primary');
+
+
 
         return $actions
             ->add(Crud::PAGE_EDIT, $fetch)
