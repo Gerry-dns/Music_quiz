@@ -3,19 +3,8 @@
 {% block title %}Détail de {{ artist.name }}{% endblock %}
 
 {% block body %}
-<h1>{{ artist.name }}</h1>
 
-<h2>Résumé :</h2>
-<p>{{ artist.biography.summary }}</p>
-<a href="{{ artist.urls.wikipedia }}" target="_blank">Lire la suite sur Wikipédia</a>
-<div>
-<img src="{{ artist.coverImage }}" alt="{{ artist.name }}" style="max-width:300px;"/>
-</div>
-{% for platform, link in artist.urls %}
-    {% if platform != 'image' %}
-        <a href="{{ link }}" target="_blank">{{ platform|replace({'_': ' '})|capitalize }}</a><br>
-    {% endif %}
-{% endfor %}
+
 
 
 {% endblock %}

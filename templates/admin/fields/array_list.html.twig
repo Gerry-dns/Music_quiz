@@ -1,22 +1,58 @@
-{% if field.value is iterable and field.value is not empty %}
-    <ul>
-        {% for k, v in field.value %}
-            {% if v is iterable and v.name is defined %}
-                {# Pour members #}
+{% if field.value is iterable and field.value|length > 0 %}
+    <ul class="ea-array-list" style="margin:0; padding-left:18px;">
+
+        {% for item in field.value %}
+
+            {# =========================
+               ALBUMS : {title, firstReleaseDate}
+               ========================= #}
+            {% if item.title is defined %}
                 <li>
-                    {{ v.name|default('—') }}
-                    {% if v.instruments is defined and v.instruments is iterable and v.instruments|length > 0 %}
-                        ({{ v.instruments|join(', ') }})
+                    <strong>{{ item.title }}</strong>
+                    {% if item.firstReleaseDate is defined and item.firstReleaseDate %}
+                        <small class="text-muted">
+                            ({{ item.firstReleaseDate|slice(0,4) }})
+                        </small>
                     {% endif %}
                 </li>
-            {% else %}
-                {# Pour albums, subGenres ou lifeSpan #}
+
+            {# =========================
+               MEMBRES : {name, instruments, begin, end}
+               ========================= #}
+            {% elseif item.name is defined %}
                 <li>
-                    <strong>{{ k|capitalize }}:</strong> {{ v }}
+                    <strong>{{ item.name }}</strong>
+
+                    {% if item.instruments is iterable %}
+                        {% set cleanInstruments = [] %}
+                        {% for instr in item.instruments %}
+                            {% if instr != 'original' %}
+                                {% set cleanInstruments = cleanInstruments|merge([instr]) %}
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if cleanInstruments|length > 0 %}
+                            — <em>{{ cleanInstruments|join(', ') }}</em>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if item.begin is defined %}
+                        <small class="text-muted">
+                            ({{ item.begin }}{% if item.end %}–{{ item.end }}{% endif %})
+                        </small>
+                    {% endif %}
                 </li>
+
+            {# =========================
+               LISTE SIMPLE (sous-genres)
+               ========================= #}
+            {% else %}
+                <li>{{ item }}</li>
             {% endif %}
+
         {% endfor %}
+
     </ul>
 {% else %}
-    —
+    <span class="badge bg-secondary">Aucune donnée</span>
 {% endif %}
