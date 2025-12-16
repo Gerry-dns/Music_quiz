@@ -4,8 +4,6 @@
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 
 #[ORM\Entity(repositoryClass: \App\Repository\ArtistRepository::class)]
 #[ORM\Table(name: 'artist')]
@@ -27,6 +25,9 @@ class Artist
 
     #[ORM\Column(type: 'json', nullable: true)]
     private array $albums = [];
+
+    #[ORM\Column(type: 'json', nullable: true)]
+    private array $releases = [];
 
     #[ORM\Column(type: 'json', nullable: true)]
     private array $members = [];
@@ -117,6 +118,16 @@ class Artist
     public function setAlbums(array $albums): self
     {
         $this->albums = $albums;
+        return $this;
+    }
+
+    public function getReleases(): array
+    {
+        return $this->releases;
+    }
+    public function setReleases(array $releases): self
+    {
+        $this->releases = $releases;
         return $this;
     }
 

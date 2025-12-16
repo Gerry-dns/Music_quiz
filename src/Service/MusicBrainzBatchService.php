@@ -44,7 +44,7 @@ class MusicBrainzBatchService
             $artistData = $this->safeRequest(
                 "https://musicbrainz.org/ws/2/artist/{$mbid}",
                 [
-                    'inc' => 'releases+aliases+annotation+genres+tags+artist-rels+url-rels',
+                    'inc' => 'releases+aliases+annotation+genres+tags+artist-rels+url-rels+release-groups',
                     'fmt' => 'json'
                 ]
             );

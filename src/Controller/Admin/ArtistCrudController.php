@@ -50,6 +50,7 @@ class ArtistCrudController extends AbstractCrudController
             TextField::new('mbid', 'MBID')->hideOnIndex(),
 
             AssociationField::new('mainGenre', 'Genre principal'),
+            ArrayField::new('subGenres', 'Sous-genres')->onlyOnDetail()->setTemplatePath('admin/fields/array_list.html.twig'),
             AssociationField::new('country', 'Pays')
                 ->setFormTypeOption('choice_label', 'name'),
 
@@ -63,7 +64,6 @@ class ArtistCrudController extends AbstractCrudController
 
 
             ArrayField::new('albums', 'Albums')->onlyOnDetail()->setTemplatePath('admin/fields/array_list.html.twig'),
-            ArrayField::new('subGenres', 'Sous-genres')->onlyOnDetail()->setTemplatePath('admin/fields/array_list.html.twig'),
             ArrayField::new('members', 'Membres')->onlyOnDetail()->setTemplatePath('admin/fields/array_list.html.twig'),
             CollectionField::new('members', 'Membres')
                 ->setEntryType(MemberType::class)
@@ -77,10 +77,7 @@ class ArtistCrudController extends AbstractCrudController
         ];
 
         $artist = $this->getContext()?->getEntity()?->getInstance();
-        if ($artist) {
-            $bio = $artist->getBiography();
-            // dd($bio);
-        }
+
         if ($artist) {
             $urls = $artist->getUrls(); // toutes les URLs
             foreach ($urls as $platform => $link) {
@@ -142,7 +139,7 @@ class ArtistCrudController extends AbstractCrudController
         MusicBrainzService $mbService,
         ArtistPopulatorService $populator,
         LoggerInterface $logger,
-        WikipediaByNameService $wikiService,
+        WikipediaByNameService $wikiService
     ): RedirectResponse {
         $artist = $this->getContext()->getEntity()->getInstance();
         $mbid = trim($artist->getMbid());
@@ -168,27 +165,37 @@ class ArtistCrudController extends AbstractCrudController
                 'mbid' => $mbid,
                 'data' => $data,
             ]);
-            // 3️⃣ Injection des données MusicBrainz restantes
 
-            $summaryData = $this->wiki->fetchSummaryByName($artist->getName());
+            // 2️⃣ Récupération résumé Wikipédia
+            $wikipediaUrl = $artist->getUrls()['wikipedia'] ?? null;
+            // dd($wikipediaUrl);
+            $summaryData = null;
+
+            if ($wikipediaUrl) {
+               $summaryData = $wikiService->fetchSummaryByUrl($wikipediaUrl);
+            }
+
+         
 
             if ($summaryData) {
-                $artist->setBiography([
-                    'source'  => 'wikipedia',
-                    'summary' => $summaryData['summary'] ?? null,
+                // Met à jour la bio
+                $artist->setBiography([$summaryData['summary'] ?? null,
                 ]);
 
+                // Met à jour l’image
                 if (!empty($summaryData['image'])) {
                     $artist->setCoverImage($summaryData['image']);
                 }
-                // Ajoute le lien Wikipedia dans urls
-                $artistUrls = $artist->getUrls(); // récupère l'existant
-                $artistUrls['wikipedia'] = 'https://' . ($summaryData['lang'] ?? 'fr') . '.wikipedia.org/wiki/' . str_replace(' ', '_', $artist->getName());
-                $artist->setUrls($artistUrls);
+
+                // Met à jour l’URL Wikipédia dans les URLs
+                $artistUrls = $artist->getUrls() ?? [];
+                if (!isset($artistUrls['wikipedia']) && !empty($summaryData['url'])) {
+                    $artistUrls['wikipedia'] = $summaryData['url'];
+                    $artist->setUrls($artistUrls);
+                }
             }
 
-
-            // 4️⃣ Sauvegarde
+            // 3️⃣ Sauvegarde
             $em->flush();
 
             $this->addFlash('success', sprintf(
@@ -205,6 +212,7 @@ class ArtistCrudController extends AbstractCrudController
             'entityId' => $artist->getId(),
         ]));
     }
+
 
 
     public function configureActions(Actions $actions): Actions

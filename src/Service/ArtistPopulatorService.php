@@ -14,6 +14,8 @@ class ArtistPopulatorService
 
     public function populateFromMusicBrainz(Artist $artist, array $data): void
     {
+        //    dd($data);
+
         // Nom
         $artist->setName($data['name'] ?? $artist->getName());
 
@@ -32,14 +34,68 @@ class ArtistPopulatorService
             $artist->setMainGenre(null);
         }
 
-        // Sub-genres (on garde les strings ici)
+        // Sub-genres
         $artist->setSubGenres($data['subGenres'] ?? []);
 
-        // Albums
-        $artist->setAlbums($data['albums'] ?? []);
+        // --- Albums uniques à partir des release-groups ---
+        $albums = [];
+        $seen = [];
 
-        // Members
-        $artist->setMembers($data['members'] ?? []);
+        foreach ($data['albums'] ?? [] as $album) {
+
+
+            $title = $album['title'] ?? null;
+            if (!$title) continue;
+
+            $normalized = $this->normalizeAlbumName($title);
+            if (in_array($normalized, $seen)) continue;
+
+            $seen[] = $normalized;
+            $albums[] = [
+                'title' => $title,
+                'firstReleaseDate' => $album['first-release-date'] ?? null,
+            ];
+        }
+        // dd($albums);
+        $artist->setAlbums($albums);
+
+        // --- Releases complètes ---
+        $releases = [];
+        foreach ($data['releases'] ?? [] as $release) {
+            $releases[] = [
+                'title' => $release['title'] ?? null,
+                'date' => $release['date'] ?? null,
+                'format' => $release['release-group']['primary-type == "Album"'] ?? null,
+            ];
+        }
+
+        $artist->setReleases($releases);
+
+
+        // Membres
+        $members = [];
+        foreach ($data['members'] ?? [] as $member) {
+            // Vérifie que c'est bien un artiste et que c'est un membre de band
+            if (($member['type'] ?? '') === 'member of band' && isset($member['artist']['name'])) {
+                $nameLower = strtolower($member['artist']['name']);
+
+                // filtrer tributes / bootlegs
+                if (strpos($nameLower, 'tribute') === false && strpos($nameLower, 'boot') === false && strpos($nameLower, 'cover') === false) {
+                    $members[] = [
+                        'name' => $member['artist']['name'],
+                        'instruments' => $member['attributes'] ?? [],
+                        'begin' => $member['begin'] ?? null,
+                        'end' => $member['end'] ?? null,
+                    ];
+                }
+            }
+        }
+
+
+        // dd($members);
+        $artist->setMembers($members);
+
+
 
         // Life span
         $artist->setLifeSpan($data['lifeSpan'] ?? []);
@@ -59,7 +115,33 @@ class ArtistPopulatorService
         } else {
             $artist->setCountry(null);
         }
+    }
 
-      
+    private function normalizeAlbumName(string $name): string
+    {
+        // Supprime les caractères invalides UTF-8
+        $name = mb_convert_encoding($name, 'UTF-8', 'UTF-8');
+
+        $name = trim(mb_strtolower($name));
+        $name = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $name); // <-- ajoute //IGNORE
+        $name = preg_replace('/[^a-z0-9 ]/', '', $name);
+        return $name;
+    }
+    public function getMembersWithInstruments(array $relations): array
+    {
+        $members = [];
+
+        foreach ($relations as $relation) {
+            if (($relation['type'] ?? '') === 'member of band' && isset($relation['artist']['name'])) {
+                $members[] = [
+                    'name' => $relation['artist']['name'],
+                    'instruments' => is_array($relation['attribute-list'] ?? null) ? $relation['attribute-list'] : [],
+                    'begin' => $relation['begin'] ?? null,
+                    'end' => $relation['end'] ?? null
+                ];
+            }
+        }
+
+        return $members;
     }
 }
