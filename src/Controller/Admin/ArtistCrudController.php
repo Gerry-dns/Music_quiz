@@ -51,11 +51,11 @@ class ArtistCrudController extends AbstractCrudController
             TextField::new('beginArea', 'Ville de formation')->hideOnIndex(),
             ImageField::new('coverImage', 'Image')->setBasePath('')->onlyOnDetail(),
             ArrayField::new('biography', 'Biographie')->onlyOnDetail()->setTemplatePath('admin/fields/array_list.html.twig'),
-            ArrayField::new('albums', 'Albums')->onlyOnDetail()->setTemplatePath('admin/fields/array_list.html.twig'),
+            ArrayField::new('albums', 'Albums')->onlyOnDetail() ->hideOnIndex()->setTemplatePath('admin/fields/array_list.html.twig'),
             ArrayField::new('subGenres', 'Sous-genres')->onlyOnDetail()->setTemplatePath('admin/fields/array_list.html.twig'),
             ArrayField::new('members', 'Membres')->onlyOnDetail()->setTemplatePath('admin/fields/array_list.html.twig'),
             CollectionField::new('members', 'Membres')->setEntryType(MemberType::class)->allowAdd()->allowDelete()->onlyOnForms(),
-            ArrayField::new('lifeSpan', 'Life Span')->onlyOnDetail()->setTemplatePath('admin/fields/array_list.html.twig'),
+            ArrayField::new('lifeSpan', 'Life Span')->hideOnIndex()->setTemplatePath('admin/fields/array_list.html.twig'),
         ];
 
         $artist = $this->getContext()?->getEntity()?->getInstance();
