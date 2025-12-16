@@ -35,7 +35,47 @@ class ArtistPopulatorService
         $artist->setSubGenres($data['subGenres'] ?? []);
 
         // Albums
-        $artist->setAlbums($data['albums'] ?? []);
+        $albums = $data['albums'] ?? [];
+        $existing = $artist->getAlbums() ?? [];
+        $existing = array_unique(array_map('trim', $existing));
+
+        foreach ($albums as $album) {
+            if (is_array($album)) {
+                $title = trim($album['title'] ?? '');
+                $date = $album['firstReleaseDate'] ?? null;
+            } else {
+                // Cas où l’album est juste une string
+                $title = trim($album);
+                $date = null;
+            }
+
+            // Vérifier si cet album existe déjà
+            $exists = false;
+            foreach ($existing as $ex) {
+                $exTitle = is_array($ex) ? ($ex['title'] ?? '') : (string)$ex;
+                $exDate = is_array($ex) ? ($ex['firstReleaseDate'] ?? null) : null;
+
+                if ($exTitle === $title && $exDate === $date) {
+                    $exists = true;
+                    break;
+                }
+            }
+
+            if (!$exists) {
+                $existing[] = ['title' => $title, 'firstReleaseDate' => $date];
+            }
+        }
+
+        // Tri par date
+        usort($existing, fn($a, $b) => strcmp($a['firstReleaseDate'] ?? '', $b['firstReleaseDate'] ?? ''));
+
+        $artist->setAlbums($existing);
+
+
+        // Trier par date
+        usort($existing, fn($a, $b) => strcmp($a['firstReleaseDate'] ?? '', $b['firstReleaseDate'] ?? ''));
+
+        $artist->setAlbums($existing);
 
         $existingMembers = $artist->getMembers() ?? [];
         foreach ($data['members'] ?? [] as $member) {
