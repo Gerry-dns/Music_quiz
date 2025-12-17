@@ -29,6 +29,9 @@ class Artist
     private array $albums = [];
 
     #[ORM\Column(type: 'json', nullable: true)]
+    private array $tracks = [];
+
+    #[ORM\Column(type: 'json', nullable: true)]
     private array $members = [];
 
     #[ORM\Column(type: 'json', nullable: true)]
@@ -117,6 +120,17 @@ class Artist
     public function setAlbums(array $albums): self
     {
         $this->albums = $albums;
+        return $this;
+    }
+
+    public function getTracks(): array
+    {
+        return $this->tracks;
+    }
+    
+    public function setTracks(array $tracks): self
+    {
+        $this->tracks = $tracks;
         return $this;
     }
 

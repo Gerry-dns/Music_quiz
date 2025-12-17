@@ -48,7 +48,7 @@ class ArtistCrudController extends AbstractCrudController
             TextField::new('mbid', 'MBID')->hideOnIndex(),
             AssociationField::new('mainGenre', 'Genre principal'),
             AssociationField::new('country', 'Pays')->setFormTypeOption('choice_label', 'name'),
-            TextField::new('beginArea', 'Ville de formation')->hideOnIndex(),
+            TextField::new('beginArea', 'Ville de formation'),
             ImageField::new('coverImage', 'Image')->setBasePath('')->onlyOnDetail(),
             ArrayField::new('biography', 'Biographie')->onlyOnDetail()->setTemplatePath('admin/fields/array_list.html.twig'),
             ArrayField::new('albums', 'Albums')->onlyOnDetail()->hideOnIndex()->setTemplatePath('admin/fields/array_list.html.twig'),
@@ -94,6 +94,10 @@ class ArtistCrudController extends AbstractCrudController
             // Récupération et traitement des données
             $data = $this->mbService->getArtistData($mbid);
             $this->populator->populateFromMusicBrainz($artist, $data);
+
+            // Récupération des tracks depuis les releases
+            // après avoir peuplé les albums
+            $this->populator->populateTracksFromReleases($artist, $this->mbService);
 
             // Récupération Wikipédia
             $summaryData = $this->wikiService->fetchSummaryByName($artist->getName());

@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Entity\Artist;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class MusicBrainzService
@@ -41,7 +42,7 @@ class MusicBrainzService
             ]);
 
             $data = $response->toArray();
-
+            // dd($data); // Debug: afficher les données reçues
 
 
             // Genres : principal et sous-genres
@@ -121,5 +122,28 @@ class MusicBrainzService
                 'error' => $e->getMessage(),
             ];
         }
+    }
+
+    // src/Service/MusicBrainzService.php
+    public function getTracksFromRelease(string $releaseMbid): array
+    {
+        $response = $this->client->request('GET', "https://musicbrainz.org/ws/2/release/$releaseMbid", [
+            'headers' => ['User-Agent' => 'MusicQuiz/1.0'],
+            'query' => [
+                'inc' => 'recordings',
+                'fmt' => 'json',
+            ],
+        ]);
+
+        $data = $response->toArray();
+        $tracks = [];
+
+        foreach ($data['media'] ?? [] as $medium) {
+            foreach ($medium['tracks'] ?? [] as $track) {
+                $tracks[] = $track['title'] ?? '';
+            }
+        }
+
+        return $tracks;
     }
 }

@@ -118,4 +118,18 @@ class ArtistPopulatorService
             $artist->setCountry(null);
         }
     }
+    public function populateTracksFromReleases(Artist $artist, MusicBrainzService $mbService): void
+    {
+        $releases = $artist->getAlbums() ?? [];
+        $tracks = [];
+
+        foreach ($releases as $release) {
+            $mbid = $release['id'] ?? null;
+            if ($mbid) {
+                $tracks = array_merge($tracks, $mbService->getTracksFromRelease($mbid));
+            }
+        }
+
+        $artist->setTracks(array_unique($tracks));
+    }
 }

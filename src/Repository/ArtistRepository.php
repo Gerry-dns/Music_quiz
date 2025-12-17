@@ -58,4 +58,81 @@ class ArtistRepository extends ServiceEntityRepository
     {
         return $this->findOneBy(['mbid' => $mbid]);
     }
+
+    /**
+     * Récupère les artistes par pays
+     */
+    public function findByCountry(string $countryCode): array
+    {
+        return $this->createQueryBuilder('a')
+            ->join('a.country', 'c')
+            ->andWhere('c.code = :code')
+            ->setParameter('code', $countryCode)
+            ->orderBy('a.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+    /**
+     * Récupère les artistes par ville de formation
+     */
+    public function findByCity(string $city): array
+    {
+        return $this->createQueryBuilder('a')
+            ->andWhere('a.beginArea = :city')
+            ->setParameter('city', $city)
+            ->orderBy('a.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+    /**
+     * Récupère les artistes par décennie
+     */
+    public function findByDecade(int $decade): array
+    {
+        $start = new \DateTime($decade . '-01-01');
+        $end   = new \DateTime(($decade + 9) . '-12-31');
+
+        return $this->createQueryBuilder('a')
+            ->andWhere('a.beginDate BETWEEN :start AND :end')
+            ->setParameter('start', $start)
+            ->setParameter('end', $end)
+            ->orderBy('a.beginDate', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Récupère les artistes avec filtres combinés
+     */
+    public function findWithFilters(
+        ?string $country = null,
+        ?string $city = null,
+        ?int $decade = null
+    ): array {
+        $qb = $this->createQueryBuilder('a');
+
+        if ($country) {
+            $qb->join('a.country', 'c')
+                ->andWhere('c.code = :country')
+                ->setParameter('country', $country);
+        }
+
+        if ($city) {
+            $qb->andWhere('a.beginArea = :city')
+                ->setParameter('city', $city);
+        }
+
+        if ($decade) {
+            $start = new \DateTime($decade . '-01-01');
+            $end   = new \DateTime(($decade + 9) . '-12-31');
+
+            $qb->andWhere('a.beginDate BETWEEN :start AND :end')
+                ->setParameter('start', $start)
+                ->setParameter('end', $end);
+        }
+
+        return $qb->orderBy('a.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }
