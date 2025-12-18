@@ -66,7 +66,7 @@ class ArtistRepository extends ServiceEntityRepository
     {
         return $this->createQueryBuilder('a')
             ->join('a.country', 'c')
-            ->andWhere('c.code = :code')
+            ->andWhere('c.id = :country') 
             ->setParameter('code', $countryCode)
             ->orderBy('a.name', 'ASC')
             ->getQuery()
@@ -75,15 +75,19 @@ class ArtistRepository extends ServiceEntityRepository
     /**
      * Récupère les artistes par ville de formation
      */
-    public function findByCity(string $city): array
+    public function findDistinctBeginAreas(): array
     {
-        return $this->createQueryBuilder('a')
-            ->andWhere('a.beginArea = :city')
-            ->setParameter('city', $city)
-            ->orderBy('a.name', 'ASC')
+        $results = $this->createQueryBuilder('a')
+            ->select('DISTINCT a.beginArea')
+            ->where('a.beginArea IS NOT NULL')
+            ->orderBy('a.beginArea', 'ASC')
             ->getQuery()
-            ->getResult();
+            ->getScalarResult();
+
+        // Transformer en tableau simple
+        return array_map(fn($r) => $r['beginArea'], $results);
     }
+
     /**
      * Récupère les artistes par décennie
      */
@@ -107,13 +111,17 @@ class ArtistRepository extends ServiceEntityRepository
     public function findWithFilters(
         ?string $country = null,
         ?string $city = null,
-        ?int $decade = null
+        ?int $decade = null,
+        ?string $genre = null,
+        ?string $name = null,
+        bool $random = false,
+        int $limit = 50
     ): array {
         $qb = $this->createQueryBuilder('a');
 
         if ($country) {
             $qb->join('a.country', 'c')
-                ->andWhere('c.code = :country')
+                ->andWhere('c.id = :country')
                 ->setParameter('country', $country);
         }
 
@@ -131,8 +139,27 @@ class ArtistRepository extends ServiceEntityRepository
                 ->setParameter('end', $end);
         }
 
-        return $qb->orderBy('a.name', 'ASC')
-            ->getQuery()
-            ->getResult();
+        if ($genre) {
+            $qb->join('a.mainGenre', 'g')
+                ->andWhere('g.name = :genre')
+                ->setParameter('genre', $genre);
+        }
+
+        if ($name) {
+            $qb->andWhere('a.name LIKE :name')
+                ->setParameter('name', '%' . $name . '%');
+        }
+
+        // Limiter le nombre de résultats
+        $qb->setMaxResults($limit);
+
+        // Trier aléatoirement si demandé, sinon par nom
+        if ($random) {
+            $qb->addOrderBy('RAND()');
+        } else {
+            $qb->orderBy('a.name', 'ASC');
+        }
+
+        return $qb->getQuery()->getResult();
     }
 }

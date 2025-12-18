@@ -6,6 +6,8 @@ namespace App\Entity;
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use App\Entity\Decade;
+use App\Entity\Instrument;
 
 #[ORM\Entity(repositoryClass: \App\Repository\ArtistRepository::class)]
 #[ORM\Table(name: 'artist')]
@@ -61,9 +63,33 @@ class Artist
     #[ORM\JoinColumn(name: 'country_id', referencedColumnName: 'id', nullable: true)]
     private ?Country $country = null;
 
-    #[ORM\ManyToOne(targetEntity: Genre::class)]
+    #[ORM\ManyToOne(targetEntity: Genre::class, inversedBy: 'artists')]
     #[ORM\JoinColumn(name: 'main_genre_id', referencedColumnName: 'id', nullable: true)]
     private ?Genre $mainGenre = null;
+
+    #[ORM\OneToMany(mappedBy: 'artist', targetEntity: Questions::class)]
+    private Collection $questions;
+
+    #[ORM\ManyToMany(targetEntity: Decade::class, inversedBy: 'artists')]
+    #[ORM\JoinTable(name: 'artist_decade')]
+    private Collection $decades;
+
+    #[ORM\ManyToMany(targetEntity: Instrument::class, inversedBy: 'artists')]
+    #[ORM\JoinTable(name: 'artist_instrument')]
+    private Collection $instruments;
+
+
+    public function __construct()
+    {
+        $this->decades = new ArrayCollection();
+        $this->instruments = new ArrayCollection();
+        $this->questions = new ArrayCollection();
+    }
+
+    public function getQuestions(): Collection
+    {
+        return $this->questions;
+    }
 
     #[ORM\PostLoad]
     public function initUrls(): void
@@ -127,7 +153,7 @@ class Artist
     {
         return $this->tracks;
     }
-    
+
     public function setTracks(array $tracks): self
     {
         $this->tracks = $tracks;
@@ -245,5 +271,63 @@ class Artist
     {
         $this->urls = $urls;
         return $this;
+    }
+
+    /**
+     * @return Collection<int, Decade>
+     */
+    public function getDecades(): Collection
+    {
+        return $this->decades;
+    }
+
+    public function addDecade(Decade $decade): self
+    {
+        if (!$this->decades->contains($decade)) {
+            $this->decades->add($decade);
+        }
+
+        return $this;
+    }
+
+    public function removeDecade(Decade $decade): self
+    {
+        $this->decades->removeElement($decade);
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Instrument>
+     */
+    public function getInstruments(): Collection
+    {
+        return $this->instruments;
+    }
+
+    public function addInstrument(Instrument $instrument): self
+    {
+        if (!$this->instruments->contains($instrument)) {
+            $this->instruments->add($instrument);
+        }
+
+        return $this;
+    }
+
+    public function removeInstrument(Instrument $instrument): self
+    {
+        $this->instruments->removeElement($instrument);
+
+        return $this;
+    }
+
+    public function getBeginYear(): ?string
+    {
+        return $this->lifeSpan['begin'] ?? null;
+    }
+
+    public function getEndDate(): ?string
+    {
+        return $this->lifeSpan['end'] ?? null;
     }
 }

@@ -1,0 +1,68 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Liste des artistes
+{% endblock %}
+
+{% block body %}
+	<h1>Liste des artistes</h1>
+
+	<form method="get" action="{{ path('artist_list') }}">
+		<label>Pays :</label>
+		<select name="country">
+			<option value="">Tous</option>
+			{% for country in countries %}
+				<option value="{{ country.id }}" {{ filters.country == country.id ? 'selected' : '' }}>
+					{{ country.name }}
+				</option>
+			{% endfor %}
+		</select>
+
+		<label>Genre :</label>
+		<select name="genre">
+			<option value="">Tous</option>
+			{% for genre in genres %}
+				<option value="{{ genre.id }}" {{ filters.genre == genre.id ? 'selected' : '' }}>
+					{{ genre.name }}
+				</option>
+			{% endfor %}
+		</select>
+
+		{# ---------------------- #}
+		{# Menu déroulant Ville ici #}
+		<label>Ville :</label>
+		<select name="city">
+			<option value="">Toutes</option>
+			{% for c in cities %}
+				<option value="{{ c }}" {{ filters.city == c ? 'selected' : '' }}>
+					{{ c }}
+				</option>
+			{% endfor %}
+		</select>
+
+		<label>Décennie :</label>
+		<select name="decade">
+			<option value="">Toutes</option>
+			{% for decade in decades %}
+				<option value="{{ decade.id }}" {{ filters.decade == decade.id ? 'selected' : '' }}>
+					{{ decade.name }}
+				</option>
+			{% endfor %}
+		</select>
+
+		<button type="submit">Filtrer</button>
+	</form>
+
+	<ul>
+		{% for artist in artists %}
+			<li>
+				<a href="{{ path('artist_detail', {'id': artist.id}) }}">
+					{{ artist.name }}
+					-
+					{{ artist.country.name ?? 'N/A' }}
+				</a>
+			</li>
+		{% else %}
+			<li>Aucun artiste trouvé.</li>
+		{% endfor %}
+	</ul>
+{% endblock %}

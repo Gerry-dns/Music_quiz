@@ -50,7 +50,7 @@ class ArtistCrudController extends AbstractCrudController
             AssociationField::new('country', 'Pays')->setFormTypeOption('choice_label', 'name'),
             TextField::new('beginArea', 'Ville de formation'),
             ImageField::new('coverImage', 'Image')->setBasePath('')->onlyOnDetail(),
-            ArrayField::new('biography', 'Biographie')->onlyOnDetail()->setTemplatePath('admin/fields/array_list.html.twig'),
+            ArrayField::new('biography', 'Biographie')->hideOnIndex()->setTemplatePath('admin/fields/array_list.html.twig'),
             ArrayField::new('albums', 'Albums')->onlyOnDetail()->hideOnIndex()->setTemplatePath('admin/fields/array_list.html.twig'),
             ArrayField::new('subGenres', 'Sous-genres')->onlyOnDetail()->setTemplatePath('admin/fields/array_list.html.twig'),
             ArrayField::new('members', 'Membres')->onlyOnDetail()->setTemplatePath('admin/fields/array_list.html.twig'),
@@ -102,7 +102,8 @@ class ArtistCrudController extends AbstractCrudController
             // Récupération Wikipédia
             $summaryData = $this->wikiService->fetchSummaryByName($artist->getName());
             if ($summaryData) {
-                $artist->setBiography(['source' => 'wikipedia', 'summary' => $summaryData['summary'] ?? null]);
+                $artist->setBiography([$summaryData['summary'] ?? null]);
+
                 if (!empty($summaryData['image'])) {
                     $artist->setCoverImage($summaryData['image']);
                 }

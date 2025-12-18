@@ -3,9 +3,18 @@
 {% block title %}Détail de {{ artist.name }}{% endblock %}
 
 {% block body %}
+<h1>{{ artist.name }}</h1>
 
+<p><strong>Pays :</strong> {{ artist.country.name ?? 'Inconnu' }}</p>
+<p><strong>Genre :</strong> {{ artist.mainGenre.name ?? 'Inconnu' }}</p>
+<p><strong>Année de début :</strong> {{ artist.beginYear ?: 'Inconnue' }}</p>
+<p><strong>Fin :</strong> {{ artist.endDate ?: 'Inconnue' }}</p>
+<p>Albums : {{ artist.albums ? artist.albums|join(', ') : 'Aucun' }}</p>
+<p><strong>Ville de formation :</strong> {{ artist.beginArea ?: 'Inconnue' }}</p>
 
-
+{% if artist.biography %}
+    <h2>Biographie</h2>
+    <p>{{ artist.biography.summary ?? artist.biography|join(' ') }}</p>
+{% endif %}
 
 {% endblock %}
-
