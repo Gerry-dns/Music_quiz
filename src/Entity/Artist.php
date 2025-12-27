@@ -67,8 +67,9 @@ class Artist
     #[ORM\JoinColumn(name: 'main_genre_id', referencedColumnName: 'id', nullable: true)]
     private ?Genre $mainGenre = null;
 
-    #[ORM\OneToMany(mappedBy: 'artist', targetEntity: Questions::class)]
+    #[ORM\OneToMany(mappedBy: 'artist', targetEntity: Questions::class, cascade: ['remove'])]
     private Collection $questions;
+
 
     #[ORM\ManyToMany(targetEntity: Decade::class, inversedBy: 'artists')]
     #[ORM\JoinTable(name: 'artist_decade')]
@@ -78,12 +79,19 @@ class Artist
     #[ORM\JoinTable(name: 'artist_instrument')]
     private Collection $instruments;
 
+    /**
+     * @var Collection<int, Release>
+     */
+    #[ORM\OneToMany(targetEntity: Release::class, mappedBy: 'artist')]
+    private Collection $releases;
+
 
     public function __construct()
     {
         $this->decades = new ArrayCollection();
         $this->instruments = new ArrayCollection();
         $this->questions = new ArrayCollection();
+        $this->releases = new ArrayCollection();
     }
 
     public function getQuestions(): Collection
@@ -329,5 +337,35 @@ class Artist
     public function getEndDate(): ?string
     {
         return $this->lifeSpan['end'] ?? null;
+    }
+
+    /**
+     * @return Collection<int, Release>
+     */
+    public function getReleases(): Collection
+    {
+        return $this->releases;
+    }
+
+    public function addRelease(Release $release): static
+    {
+        if (!$this->releases->contains($release)) {
+            $this->releases->add($release);
+            $release->setArtist($this);
+        }
+
+        return $this;
+    }
+
+    public function removeRelease(Release $release): static
+    {
+        if ($this->releases->removeElement($release)) {
+            // set the owning side to null (unless already changed)
+            if ($release->getArtist() === $this) {
+                $release->setArtist(null);
+            }
+        }
+
+        return $this;
     }
 }

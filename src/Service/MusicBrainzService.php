@@ -2,7 +2,6 @@
 
 namespace App\Service;
 
-use App\Entity\Artist;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class MusicBrainzService
@@ -10,42 +9,38 @@ class MusicBrainzService
     public function __construct(private HttpClientInterface $client) {}
 
     /**
-     * Recherche un artiste par nom et renvoie son MBID principal.
+     * Récupère les données principales d'un artiste avec releases et URLs.
      */
-    public function searchArtistByName(string $name): ?string
+    // src/Service/MusicBrainzService.php
+    public function getArtistFullData(string $mbid): array
     {
-        $response = $this->client->request('GET', 'https://musicbrainz.org/ws/2/artist', [
-            'headers' => ['User-Agent' => 'MusicQuiz/1.0'],
-            'query' => [
-                'query' => $name,
-                'fmt' => 'json',
-                'limit' => 5, // limiter les résultats pour éviter surcharge
-            ],
-        ]);
+        $artistData = [
+            'albums' => [],
+            'urls' => [],
+            'members' => [],
+            'mainGenre' => '',
+            'subGenres' => [],
+            'aliases' => [],
+            'lifeSpan' => [],
+            'beginArea' => null,
+            'country' => null,
+        ];
 
-        $data = $response->toArray();
-        return $data['artists'][0]['id'] ?? null;
-    }
-
-    /**
-     * Récupère les données détaillées d'un artiste via son MBID.
-     */
-    public function getArtistData(string $mbid): array
-    {
         try {
+            // Récupération de l'artiste avec les relations et releases
             $response = $this->client->request('GET', "https://musicbrainz.org/ws/2/artist/{$mbid}", [
                 'headers' => ['User-Agent' => 'MusicQuiz/1.0'],
                 'query' => [
-                    'inc' => 'releases+artist-rels+tags+genres+recordings+aliases+url-rels',
+                    'inc' => 'release-groups+artist-rels+tags+genres+aliases+url-rels',
                     'fmt' => 'json',
                 ],
             ]);
 
             $data = $response->toArray();
-            // dd($data); // Debug: afficher les données reçues
 
 
-            // Genres : principal et sous-genres
+
+            // Genres
             $mainGenre = $data['type'] ?? '';
             $subGenres = [];
             if (!empty($data['tags'])) {
@@ -58,13 +53,21 @@ class MusicBrainzService
                 }
             }
 
-            // Albums
+            // Rel
             $albums = [];
-            foreach ($data['releases'] ?? [] as $release) {
-                $albums[] = $release['title'];
+            foreach ($data['release-groups'] ?? [] as $release) {
+                if (($release['primary-type'] ?? '') === 'Album') {
+                    $albums[$release['id']] = [
+                        'id' => $release['id'] ?? null,
+                        'title' => $release['title'] ?? '',
+                        'firstReleaseDate' => $release['first-release-date'] ?? null,
+                    ];
+                }
             }
+            $albums = array_values($albums); // Pour ré-indexer le tableau
 
-            // Membres et instruments
+
+            // Membres
             $members = [];
             foreach ($data['relations'] ?? [] as $rel) {
                 if (($rel['type'] ?? '') === 'member of band' && isset($rel['artist']['name'])) {
@@ -73,77 +76,38 @@ class MusicBrainzService
                         'instruments' => is_array($rel['attribute-list'] ?? null) ? $rel['attribute-list'] : [],
                     ];
                 }
-                // Life-span complet
-                $lifeSpan = [
-                    'begin' => $data['life-span']['begin'] ?? null,
-                    'ended' => $data['life-span']['ended'] ?? false,
-                    'end'   => $data['life-span']['end'] ?? null,
-                ];
+            }
 
-                // Begin-area (ville de formation)
-                $beginArea = $data['begin-area']['name'] ?? null;
-
-                $urls = [];
-                foreach ($data['relations'] ?? [] as $rel) {
-                    if (!empty($rel['url']['resource'])) {
-                        $key = strtolower(str_replace(' ', '_', $rel['type']));
-                        $urls[$key] = $rel['url']['resource'];
-                    }
+            // URLs
+            $urls = [];
+            foreach ($data['relations'] ?? [] as $rel) {
+                if (!empty($rel['url']['resource'])) {
+                    $key = strtolower(str_replace(' ', '_', $rel['type']));
+                    $urls[$key] = $rel['url']['resource'];
                 }
             }
 
-            return [
+            $artistData = array_merge($artistData, [
                 'mbid' => $data['id'] ?? '',
                 'name' => $data['name'] ?? '',
                 'mainGenre' => $mainGenre,
                 'subGenres' => $subGenres,
-                'country' => $data['area']['name'] ?? '',
-                'foundedYear' => isset($data['life-span']['begin']) ? (int) substr($data['life-span']['begin'], 0, 4) : null,
                 'albums' => $albums,
                 'members' => $members,
                 'aliases' => array_map(fn($a) => $a['name'], $data['aliases'] ?? []),
-                'annotation' => $data['annotation'] ?? null,
-                'lifeSpan' => $lifeSpan,
-                'beginArea' => $beginArea,
+                'lifeSpan' => [
+                    'begin' => $data['life-span']['begin'] ?? null,
+                    'ended' => $data['life-span']['ended'] ?? false,
+                    'end'   => $data['life-span']['end'] ?? null,
+                ],
+                'beginArea' => $data['begin-area']['name'] ?? null,
+                'country' => $data['area']['name'] ?? null,
                 'urls' => $urls,
-            ];
+            ]);
         } catch (\Exception $e) {
-            return [
-                'mbid' => '',
-                'name' => '',
-                'mainGenre' => '',
-                'subGenres' => [],
-                'country' => '',
-                'foundedYear' => null,
-                'albums' => [],
-                'members' => [],
-                'aliases' => [],
-                'annotation' => null,
-                'error' => $e->getMessage(),
-            ];
-        }
-    }
-
-    // src/Service/MusicBrainzService.php
-    public function getTracksFromRelease(string $releaseMbid): array
-    {
-        $response = $this->client->request('GET', "https://musicbrainz.org/ws/2/release/$releaseMbid", [
-            'headers' => ['User-Agent' => 'MusicQuiz/1.0'],
-            'query' => [
-                'inc' => 'recordings',
-                'fmt' => 'json',
-            ],
-        ]);
-
-        $data = $response->toArray();
-        $tracks = [];
-
-        foreach ($data['media'] ?? [] as $medium) {
-            foreach ($medium['tracks'] ?? [] as $track) {
-                $tracks[] = $track['title'] ?? '';
-            }
+            $artistData['error'] = $e->getMessage();
         }
 
-        return $tracks;
+        return $artistData;
     }
 }

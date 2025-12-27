@@ -9,7 +9,7 @@ use Doctrine\ORM\EntityManagerInterface;
 
 class ArtistPopulatorService
 {
-    public function __construct(private EntityManagerInterface $em) {}
+    public function __construct(private EntityManagerInterface $em,private MusicBrainzService $musicBrainzService) {}
 
     public function populateFromMusicBrainz(Artist $artist, array $data): void
     {
@@ -37,37 +37,19 @@ class ArtistPopulatorService
         // Albums
         $albums = $data['albums'] ?? [];
         $existing = $artist->getAlbums() ?? [];
-        $existing = array_unique(array_map('trim', $existing));
 
         foreach ($albums as $album) {
-            if (is_array($album)) {
-                $title = trim($album['title'] ?? '');
-                $date = $album['firstReleaseDate'] ?? null;
-            } else {
-                // Cas où l’album est juste une string
-                $title = trim($album);
-                $date = null;
-            }
+            $title = trim($album['title'] ?? $album);
+            $date  = $album['firstReleaseDate'] ?? null;
+            $releaseId = $album['id'] ?? null; // il faut l'id pour récupérer les tracks
 
-            // Vérifier si cet album existe déjà
-            $exists = false;
-            foreach ($existing as $ex) {
-                $exTitle = is_array($ex) ? ($ex['title'] ?? '') : (string)$ex;
-                $exDate = is_array($ex) ? ($ex['firstReleaseDate'] ?? null) : null;
+          
 
-                if ($exTitle === $title && $exDate === $date) {
-                    $exists = true;
-                    break;
-                }
-            }
-
-            if (!$exists) {
-                $existing[] = ['title' => $title, 'firstReleaseDate' => $date];
-            }
+            $existing[] = [
+                'title' => $title,
+                'firstReleaseDate' => $date,
+            ];
         }
-
-        // Tri par date
-        usort($existing, fn($a, $b) => strcmp($a['firstReleaseDate'] ?? '', $b['firstReleaseDate'] ?? ''));
 
         $artist->setAlbums($existing);
 
@@ -117,19 +99,5 @@ class ArtistPopulatorService
         } else {
             $artist->setCountry(null);
         }
-    }
-    public function populateTracksFromReleases(Artist $artist, MusicBrainzService $mbService): void
-    {
-        $releases = $artist->getAlbums() ?? [];
-        $tracks = [];
-
-        foreach ($releases as $release) {
-            $mbid = $release['id'] ?? null;
-            if ($mbid) {
-                $tracks = array_merge($tracks, $mbService->getTracksFromRelease($mbid));
-            }
-        }
-
-        $artist->setTracks(array_unique($tracks));
     }
 }

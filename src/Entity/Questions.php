@@ -47,10 +47,10 @@ class Questions
     #[ORM\Column(nullable: true)]
     private ?int $correctCount = null;
 
-    #[ORM\ManyToOne(inversedBy: 'questions')]
-    #[ORM\JoinColumn(nullable:  true)]
+    #[ORM\ManyToOne(targetEntity: Artist::class)]
+    #[ORM\JoinColumn(name: "artist_id", referencedColumnName: "id", nullable: true, onDelete: "SET NULL")]
     private ?Artist $artist = null;
-
+    
     public function getId(): ?int
     {
         return $this->id;

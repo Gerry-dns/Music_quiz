@@ -43,20 +43,40 @@ class ArtistCrudController extends AbstractCrudController
 
     public function configureFields(string $pageName): iterable
     {
-        $fields = [
+        return [
             TextField::new('name', 'Nom'),
             TextField::new('mbid', 'MBID')->hideOnIndex(),
             AssociationField::new('mainGenre', 'Genre principal'),
             AssociationField::new('country', 'Pays')->setFormTypeOption('choice_label', 'name'),
             TextField::new('beginArea', 'Ville de formation'),
             ImageField::new('coverImage', 'Image')->setBasePath('')->onlyOnDetail(),
-            ArrayField::new('biography', 'Biographie')->hideOnIndex()->setTemplatePath('admin/fields/array_list.html.twig'),
-            ArrayField::new('albums', 'Albums')->onlyOnDetail()->hideOnIndex()->setTemplatePath('admin/fields/array_list.html.twig'),
-            ArrayField::new('subGenres', 'Sous-genres')->onlyOnDetail()->setTemplatePath('admin/fields/array_list.html.twig'),
-            ArrayField::new('members', 'Membres')->onlyOnDetail()->setTemplatePath('admin/fields/array_list.html.twig'),
-            CollectionField::new('members', 'Membres')->setEntryType(MemberType::class)->allowAdd()->allowDelete()->onlyOnForms(),
-            ArrayField::new('lifeSpan', 'Life Span')->hideOnIndex()->setTemplatePath('admin/fields/array_list.html.twig'),
+
+            // Champs complexes en lecture seule
+            ArrayField::new('biography', 'Biographie')
+                ->onlyOnDetail()
+                ->setTemplatePath('admin/fields/array_list.html.twig'),
+
+            ArrayField::new('albums', 'Albums')
+                ->onlyOnDetail()
+                ->setTemplatePath('admin/fields/array_list.html.twig'),
+
+            ArrayField::new('subGenres', 'Sous-genres')
+                ->onlyOnDetail()
+                ->setTemplatePath('admin/fields/array_list.html.twig'),
+
+            ArrayField::new('members', 'Membres')
+                ->onlyOnDetail()
+                ->setTemplatePath('admin/fields/array_list.html.twig'),
+
+            ArrayField::new('lifeSpan', 'Life Span')
+                ->onlyOnDetail()
+                ->setTemplatePath('admin/fields/array_list.html.twig'),
+            ArrayField::new('tracks', 'Tracks')
+                ->onlyOnDetail()
+                ->setTemplatePath('admin/fields/array_list.html.twig'),
         ];
+
+
 
         $artist = $this->getContext()?->getEntity()?->getInstance();
         if ($artist) {
@@ -92,12 +112,11 @@ class ArtistCrudController extends AbstractCrudController
 
         try {
             // Récupération et traitement des données
-            $data = $this->mbService->getArtistData($mbid);
-            $this->populator->populateFromMusicBrainz($artist, $data);
+            $artistData = $this->mbService->getArtistFullData($mbid);
 
-            // Récupération des tracks depuis les releases
-            // après avoir peuplé les albums
-            $this->populator->populateTracksFromReleases($artist, $this->mbService);
+            $this->populator->populateFromMusicBrainz($artist, $artistData);
+
+           
 
             // Récupération Wikipédia
             $summaryData = $this->wikiService->fetchSummaryByName($artist->getName());

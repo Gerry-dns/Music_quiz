@@ -30,10 +30,20 @@ public function index(): Response
     $artists = $this->em->getRepository(Artist::class)->findRandomArtists(1);
     $artist = $artists[0] ?? null;
 
-     if ($artist) {
-        // Supprimer les doublons dans les albums
-        $artist->setAlbums(array_unique($artist->getAlbums() ?? []));
+    if ($artist) {
+    $uniqueAlbums = [];
+
+    foreach ($artist->getAlbums() as $album) {
+        if (!isset($album['id'])) {
+            continue;
+        }
+        $uniqueAlbums[$album['id']] = $album;
     }
+
+    // On réindexe proprement
+    $artist->setAlbums(array_values($uniqueAlbums));
+}
+
 
   
     $question = $this->em->getRepository(Questions::class)
