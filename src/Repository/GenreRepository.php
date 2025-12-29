@@ -16,28 +16,21 @@ class GenreRepository extends ServiceEntityRepository
         parent::__construct($registry, Genre::class);
     }
 
-    //    /**
-    //     * @return Genre[] Returns an array of Genre objects
-    //     */
-    //    public function findByExampleField($value): array
-    //    {
-    //        return $this->createQueryBuilder('g')
-    //            ->andWhere('g.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->orderBy('g.id', 'ASC')
-    //            ->setMaxResults(10)
-    //            ->getQuery()
-    //            ->getResult()
-    //        ;
-    //    }
+    // Méthode pour récupérer un genre aléatoire sauf celui à exclure
+    public function getRandomGenre(string $exclude): string
+    {
+        $genres = $this->createQueryBuilder('g')
+            ->where('g.name != :exclude')
+            ->setParameter('exclude', $exclude)
+            ->getQuery()
+            ->getResult();
 
-    //    public function findOneBySomeField($value): ?Genre
-    //    {
-    //        return $this->createQueryBuilder('g')
-    //            ->andWhere('g.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->getQuery()
-    //            ->getOneOrNullResult()
-    //        ;
-    //    }
+        if (empty($genres)) {
+            return 'Genre Aléatoire';
+        }
+
+        $randomGenre = $genres[array_rand($genres)];
+
+        return $randomGenre->getName();
+    }
 }

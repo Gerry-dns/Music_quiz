@@ -21,15 +21,10 @@
 						<strong>Genre principal:</strong>
 						{{ artist.mainGenre }}</p>
 					<p>
-						{% if artist.subGenres %}
-							<p>
-								<strong>Sous-genres:</strong>
-								{{ artist.subGenres|join(', ') }}</p>
-						{% endif %}
-						{% if artist.members %}
+						{% if artist.artistMembers %}
 							<p>
 								<strong>Membres:</strong>
-								{{ artist.members|map(m => m.name)|join(', ') }}
+								  {{ artist.artistMembers|map(m => m.name)|join(', ') }}
 							</p>
 						{% endif %}
 						<strong>Pays:</strong>

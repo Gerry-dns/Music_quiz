@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\Common\Collections\ArrayCollection;
 use App\Entity\Artist;
@@ -11,23 +12,67 @@ class Instrument
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column(type:"integer")]
-    private $id;
+    #[ORM\Column(type: "integer")]
+    private  $id = null;
 
-    #[ORM\Column(type:"string", length:100, unique:true)]
+    #[ORM\Column(type: "string", length: 100, unique: true)]
     private $name;
 
-    #[ORM\ManyToMany(targetEntity: Artist::class, mappedBy: "instruments")]
-    private $artists;
+    #[ORM\OneToMany(mappedBy: 'instrument', targetEntity: ArtistMemberInstrument::class)]
+    private Collection $artistMemberInstruments;
+    /**
+     * @var Collection<int, ArtistInstrument>
+     */
+    #[ORM\OneToMany(targetEntity: ArtistInstrument::class, mappedBy: 'instrument')]
+    private Collection $artistInstruments;
 
     public function __construct()
     {
-        $this->artists = new ArrayCollection();
+        $this->artistInstruments = new ArrayCollection();
+        $this->artistMemberInstruments = new ArrayCollection();
     }
 
-    public function getId(): ?int { return $this->id; }
-    public function getName(): ?string { return $this->name; }
-    public function setName(string $name): self { $this->name = $name; return $this; }
+    public function getId(): ?int
+    {
+        return $this->id;
+    }
+    public function getName(): ?string
+    {
+        return $this->name;
+    }
+    public function setName(string $name): self
+    {
+        $this->name = $name;
+        return $this;
+    }
 
-    public function getArtists() { return $this->artists; }
+    /**
+     * @return Collection<int, ArtistInstrument>
+     */
+    public function getArtistInstruments(): Collection
+    {
+        return $this->artistInstruments;
+    }
+
+    public function addArtistInstrument(ArtistInstrument $artistInstrument): static
+    {
+        if (!$this->artistInstruments->contains($artistInstrument)) {
+            $this->artistInstruments->add($artistInstrument);
+            $artistInstrument->setInstrument($this);
+        }
+
+        return $this;
+    }
+
+    public function removeArtistInstrument(ArtistInstrument $artistInstrument): static
+    {
+        if ($this->artistInstruments->removeElement($artistInstrument)) {
+            // set the owning side to null (unless already changed)
+            if ($artistInstrument->getInstrument() === $this) {
+                $artistInstrument->setInstrument(null);
+            }
+        }
+
+        return $this;
+    }
 }

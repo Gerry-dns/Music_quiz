@@ -9,14 +9,17 @@ class MusicBrainzService
     public function __construct(private HttpClientInterface $client) {}
 
     /**
-     * Récupère les données principales d'un artiste avec releases et URLs.
+     * Récupère toutes les données principales d'un artiste depuis MusicBrainz.
+     *
+     * @param string $mbid MBID de l'artiste
+     * @return array Tableau avec albums, membres, genres, URLs, lifeSpan, beginArea, country
      */
-    // src/Service/MusicBrainzService.php
     public function getArtistFullData(string $mbid): array
     {
         $artistData = [
+            'mbid' => '',
+            'name' => '',
             'albums' => [],
-            'urls' => [],
             'members' => [],
             'mainGenre' => '',
             'subGenres' => [],
@@ -24,10 +27,11 @@ class MusicBrainzService
             'lifeSpan' => [],
             'beginArea' => null,
             'country' => null,
+            'urls' => [],
         ];
+        
 
         try {
-            // Récupération de l'artiste avec les relations et releases
             $response = $this->client->request('GET', "https://musicbrainz.org/ws/2/artist/{$mbid}", [
                 'headers' => ['User-Agent' => 'MusicQuiz/1.0'],
                 'query' => [
@@ -37,23 +41,48 @@ class MusicBrainzService
             ]);
 
             $data = $response->toArray();
+            // dd($data);
 
-
-
-            // Genres
-            $mainGenre = $data['type'] ?? '';
+            // --- Genres ---
+            // --- Genres ---
+            $mainGenre = $data['type'] ?? ''; // fallback si pas de tags
             $subGenres = [];
+
             if (!empty($data['tags'])) {
+                // trier par popularité (count)
                 usort($data['tags'], fn($a, $b) => ($b['count'] ?? 0) <=> ($a['count'] ?? 0));
+
+                // le genre principal devient le plus populaire
                 $mainGenre = $data['tags'][0]['name'] ?? $mainGenre;
+                $mainGenreCount = $data['tags'][0]['count'] ?? 0;
+
+                // remplir les sous-genres
                 foreach ($data['tags'] as $tag) {
-                    if (($tag['name'] ?? '') !== $mainGenre) {
-                        $subGenres[] = $tag['name'];
+                    $tagName = $tag['name'] ?? '';
+                    $tagCount = $tag['count'] ?? 0;
+
+                    if ($tagName && $tagName !== $mainGenre) {
+                        $subGenres[] = [
+                            'name' => $tagName,
+                            'count' => $tagCount
+                        ];
                     }
                 }
+
+                
             }
 
-            // Rel
+            // résultat final structuré
+            $genresForDashboard = [
+                'mainGenre' => [
+                    'name' => $mainGenre,
+                    'count' => $mainGenreCount ?? 0,
+                ],
+                'subGenres' => $subGenres
+            ];
+
+
+            // --- Albums ---
             $albums = [];
             foreach ($data['release-groups'] ?? [] as $release) {
                 if (($release['primary-type'] ?? '') === 'Album') {
@@ -64,21 +93,24 @@ class MusicBrainzService
                     ];
                 }
             }
-            $albums = array_values($albums); // Pour ré-indexer le tableau
+            $albums = array_values($albums); // ré-indexer
 
-
-            // Membres
+            // --- Membres ---
             $members = [];
             foreach ($data['relations'] ?? [] as $rel) {
                 if (($rel['type'] ?? '') === 'member of band' && isset($rel['artist']['name'])) {
                     $members[] = [
                         'name' => $rel['artist']['name'],
-                        'instruments' => is_array($rel['attribute-list'] ?? null) ? $rel['attribute-list'] : [],
+                        'begin' => $rel['begin'] ?? null,
+                        'end' => $rel['end'] ?? null,
+                        'instruments' => $rel['attributes'] ?? [], // récupère les instruments
                     ];
                 }
             }
 
-            // URLs
+           
+
+            // --- URLs ---
             $urls = [];
             foreach ($data['relations'] ?? [] as $rel) {
                 if (!empty($rel['url']['resource'])) {
@@ -87,23 +119,35 @@ class MusicBrainzService
                 }
             }
 
+            // --- Alias ---
+            $aliases = array_map(fn($a) => $a['name'], $data['aliases'] ?? []);
+
+            // --- Life span ---
+            $lifeSpan = [
+                'begin' => $data['life-span']['begin'] ?? null,
+                'ended' => $data['life-span']['ended'] ?? false,
+                'end'   => $data['life-span']['end'] ?? null,
+            ];
+
+            // --- Begin area et pays ---
+            $beginArea = $data['begin-area']['name'] ?? null;
+            $country = $data['area']['name'] ?? null;
+
+            // --- Fusionner toutes les données ---
             $artistData = array_merge($artistData, [
                 'mbid' => $data['id'] ?? '',
                 'name' => $data['name'] ?? '',
-                'mainGenre' => $mainGenre,
-                'subGenres' => $subGenres,
                 'albums' => $albums,
                 'members' => $members,
-                'aliases' => array_map(fn($a) => $a['name'], $data['aliases'] ?? []),
-                'lifeSpan' => [
-                    'begin' => $data['life-span']['begin'] ?? null,
-                    'ended' => $data['life-span']['ended'] ?? false,
-                    'end'   => $data['life-span']['end'] ?? null,
-                ],
-                'beginArea' => $data['begin-area']['name'] ?? null,
-                'country' => $data['area']['name'] ?? null,
+                'mainGenre' => $mainGenre,
+                'subGenres' => $subGenres,
+                'aliases' => $aliases,
+                'lifeSpan' => $lifeSpan,
+                'beginArea' => $beginArea,
+                'country' => $country,
                 'urls' => $urls,
             ]);
+            // dd($artistData);
         } catch (\Exception $e) {
             $artistData['error'] = $e->getMessage();
         }

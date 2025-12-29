@@ -23,40 +23,47 @@ class DashboardController extends AbstractDashboardController
         $this->em = $em;
     }
 
-// DashboardController.php
-#[Route('/admin', name: 'admin')]
-public function index(): Response
-{
-    $artists = $this->em->getRepository(Artist::class)->findRandomArtists(1);
-    $artist = $artists[0] ?? null;
+    // DashboardController.php
+    #[Route('/admin', name: 'admin')]
+    public function index(): Response
+    {
+        $artists = $this->em->getRepository(Artist::class)->findRandomArtists(1);
+        $artist = $artists[0] ?? null;
 
-    if ($artist) {
-    $uniqueAlbums = [];
+        if ($artist) {
+            $uniqueAlbums = [];
 
-    foreach ($artist->getAlbums() as $album) {
-        if (!isset($album['id'])) {
-            continue;
+            foreach ($artist->getAlbums() as $album) {
+                if (!isset($album['id'])) {
+                    continue;
+                }
+                $uniqueAlbums[$album['id']] = $album;
+            }
+
+            // On réindexe proprement
+            foreach ($artist->getAlbums() as $existingAlbum) {
+                $artist->removeAlbum($existingAlbum);
+            }
+
+            // On ajoute les albums uniques
+            foreach ($uniqueAlbums as $albumData) {
+                $artist->addAlbum($albumData);
+            }
         }
-        $uniqueAlbums[$album['id']] = $album;
+
+
+
+        $question = $this->em->getRepository(Questions::class)
+            ->createQueryBuilder('q')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        return $this->render('admin/welcome.html.twig', [
+            'question' => $question,
+            'artist' => $artist,
+        ]);
     }
-
-    // On réindexe proprement
-    $artist->setAlbums(array_values($uniqueAlbums));
-}
-
-
-  
-    $question = $this->em->getRepository(Questions::class)
-        ->createQueryBuilder('q')
-        ->setMaxResults(1)
-        ->getQuery()
-        ->getOneOrNullResult();
-
-    return $this->render('admin/welcome.html.twig', [
-        'question' => $question,
-           'artist' => $artist,
-    ]);
-}
 
 
     public function configureDashboard(): Dashboard
@@ -86,4 +93,3 @@ public function index(): Response
         ]);
     }
 }
-

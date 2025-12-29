@@ -47,7 +47,7 @@ class Questions
     #[ORM\Column(nullable: true)]
     private ?int $correctCount = null;
 
-    #[ORM\ManyToOne(targetEntity: Artist::class)]
+    #[ORM\ManyToOne(targetEntity: Artist::class, inversedBy: 'questions')]
     #[ORM\JoinColumn(name: "artist_id", referencedColumnName: "id", nullable: true, onDelete: "SET NULL")]
     private ?Artist $artist = null;
     

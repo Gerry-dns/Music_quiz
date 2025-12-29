@@ -1,13 +1,10 @@
 <?php
 
-
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
-use App\Entity\Decade;
-use App\Entity\Instrument;
+use Doctrine\Common\Collections\ArrayCollection;
 
 #[ORM\Entity(repositoryClass: \App\Repository\ArtistRepository::class)]
 #[ORM\Table(name: 'artist')]
@@ -27,97 +24,87 @@ class Artist
     #[ORM\Column(type: 'string', length: 255, nullable: true)]
     private ?string $coverImage = null;
 
-    #[ORM\Column(type: 'json', nullable: true)]
-    private array $albums = [];
-
-    #[ORM\Column(type: 'json', nullable: true)]
-    private array $tracks = [];
-
-    #[ORM\Column(type: 'json', nullable: true)]
-    private array $members = [];
+    #[ORM\OneToMany(mappedBy: 'artist', targetEntity: Album::class, cascade: ['persist', 'remove'])]
+    private Collection $albums;
 
     #[ORM\Column(type: 'json', nullable: true)]
     private array $biography = [];
 
+    #[ORM\ManyToOne(targetEntity: Country::class, inversedBy: 'artists')]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?Country $country = null;
+    
+    #[ORM\ManyToOne(targetEntity: City::class, inversedBy: 'artists')]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?City $beginArea = null;
 
-    #[ORM\Column(type: 'json', nullable: true)]
-    private array $subGenres = [];
+    #[ORM\OneToMany(mappedBy: 'artist', targetEntity: ArtistMember::class, cascade: ['persist', 'remove'])]
+    private Collection $artistMembers;
 
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
-    private ?string $beginArea = null;
+    #[ORM\OneToMany(mappedBy: 'artist', targetEntity: ArtistInstrument::class, cascade: ['persist', 'remove'])]
+    private Collection $artistInstruments;
 
-    #[ORM\Column(type: 'json', nullable: true)]
-    private array $lifeSpan = [];
+    #[ORM\ManyToMany(targetEntity: Decade::class)]
+    #[ORM\JoinTable(name: "artist_decade")]
+    private Collection $decades;
+
+    #[ORM\OneToMany(mappedBy: 'artist', targetEntity: ArtistSubGenre::class, cascade: ['persist', 'remove'])]
+    private Collection $artistSubGenres;
+
+
+    #[ORM\ManyToOne(targetEntity: Genre::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?Genre $mainGenre = null;
 
     #[ORM\Column(type: 'json', nullable: true)]
     private array $urls = [];
 
-
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
-    private ?string $disambiguation = null;
-
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
-    private ?string $type = null;
-
-    #[ORM\ManyToOne(targetEntity: Country::class)]
-    #[ORM\JoinColumn(name: 'country_id', referencedColumnName: 'id', nullable: true)]
-    private ?Country $country = null;
-
-    #[ORM\ManyToOne(targetEntity: Genre::class, inversedBy: 'artists')]
-    #[ORM\JoinColumn(name: 'main_genre_id', referencedColumnName: 'id', nullable: true)]
-    private ?Genre $mainGenre = null;
-
-    #[ORM\OneToMany(mappedBy: 'artist', targetEntity: Questions::class, cascade: ['remove'])]
-    private Collection $questions;
-
-
-    #[ORM\ManyToMany(targetEntity: Decade::class, inversedBy: 'artists')]
-    #[ORM\JoinTable(name: 'artist_decade')]
-    private Collection $decades;
-
-    #[ORM\ManyToMany(targetEntity: Instrument::class, inversedBy: 'artists')]
-    #[ORM\JoinTable(name: 'artist_instrument')]
-    private Collection $instruments;
-
-    /**
-     * @var Collection<int, Release>
-     */
-    #[ORM\OneToMany(targetEntity: Release::class, mappedBy: 'artist')]
-    private Collection $releases;
-
-
     public function __construct()
     {
+        $this->artistMembers = new ArrayCollection();
+        $this->artistInstruments = new ArrayCollection();
         $this->decades = new ArrayCollection();
-        $this->instruments = new ArrayCollection();
-        $this->questions = new ArrayCollection();
-        $this->releases = new ArrayCollection();
+        $this->artistSubGenres = new ArrayCollection();
+        $this->decades = new ArrayCollection();
     }
 
-    public function getQuestions(): Collection
+    // GETTERS / SETTERS
+
+    public function getUrls(): array
     {
-        return $this->questions;
+        return $this->urls;
+    }
+    public function setUrls(array $urls): self
+    {
+        $this->urls = $urls;
+        return $this;
     }
 
-    #[ORM\PostLoad]
-    public function initUrls(): void
+    public function getMembers(): array
     {
-        if ($this->urls === null) {
-            $this->urls = [];
-        }
+        return $this->artistMembers->toArray();
+    }
+
+    public function getMainGenre(): ?Genre
+    {
+        return $this->mainGenre;
+    }
+
+    public function setMainGenre(?Genre $mainGenre): self
+    {
+        $this->mainGenre = $mainGenre;
+        return $this;
     }
 
     public function getId(): ?int
     {
         return $this->id;
     }
-
     public function getName(): ?string
     {
         return $this->name;
     }
-
-    public function setName(string $name): self
+    public function setName(?string $name): self
     {
         $this->name = $name;
         return $this;
@@ -127,122 +114,53 @@ class Artist
     {
         return $this->mbid;
     }
-
     public function setMbid(?string $mbid): self
     {
         $this->mbid = $mbid;
         return $this;
     }
 
+    public function getAlbums(): Collection
+    {
+        return $this->albums;
+    }
+
+    public function addAlbum(Album $album): self
+    {
+        if (!$this->albums->contains($album)) {
+            $this->albums->add($album);
+            $album->setArtist($this);
+        }
+        return $this;
+    }
+
+    public function removeAlbum(Album $album): self
+    {
+        if ($this->albums->removeElement($album)) {
+            $album->setArtist(null);
+        }
+        return $this;
+    }
 
     public function getCoverImage(): ?string
     {
         return $this->coverImage;
     }
-
     public function setCoverImage(?string $coverImage): self
     {
         $this->coverImage = $coverImage;
         return $this;
     }
 
-    public function getAlbums(): array
-    {
-        return $this->albums;
-    }
 
-    public function setAlbums(array $albums): self
-    {
-        $this->albums = $albums;
-        return $this;
-    }
-
-    public function getTracks(): array
-    {
-        return $this->tracks;
-    }
-
-    public function setTracks(array $tracks): self
-    {
-        $this->tracks = $tracks;
-        return $this;
-    }
-
-    public function getMembers(): array
-    {
-        return $this->members;
-    }
-
-    public function setMembers(array $members): self
-    {
-        $this->members = $members;
-        return $this;
-    }
 
     public function getBiography(): array
     {
-        return $this->biography ?? [];
+        return $this->biography;
     }
-
-
-    public function setBiography(?array $biography): self
+    public function setBiography(array $biography): self
     {
         $this->biography = $biography;
-        return $this;
-    }
-
-    public function getSubGenres(): array
-    {
-        return $this->subGenres;
-    }
-
-    public function setSubGenres(array $subGenres): self
-    {
-        $this->subGenres = $subGenres;
-        return $this;
-    }
-
-    public function getBeginArea(): ?string
-    {
-        return $this->beginArea;
-    }
-
-    public function setBeginArea(?string $area): self
-    {
-        $this->beginArea = $area;
-        return $this;
-    }
-
-    public function getLifeSpan(): ?array
-    {
-        return $this->lifeSpan;
-    }
-
-    public function setLifespan(?array $lifeSpan): self
-    {
-        $this->lifeSpan = $lifeSpan;
-        return $this;
-    }
-
-
-
-    public function getDisambiguation(): ?string
-    {
-        return $this->disambiguation;
-    }
-    public function setDisambiguation(?string $text): self
-    {
-        $this->disambiguation = $text;
-        return $this;
-    }
-
-    public function getType(): ?string
-    {
-        return $this->type;
-    }
-    public function setType(?string $type): self
-    {
-        $this->type = $type;
         return $this;
     }
 
@@ -256,116 +174,88 @@ class Artist
         return $this;
     }
 
-    public function getMainGenre(): ?Genre
+    public function getBeginArea(): ?City
     {
-        return $this->mainGenre;
+        return $this->beginArea;
     }
-    public function setMainGenre(?Genre $genre): self
+    public function setBeginArea(?City $beginArea): self
     {
-        $this->mainGenre = $genre;
+        $this->beginArea = $beginArea;
         return $this;
     }
 
-    public function __toString(): string
+    public function getArtistMembers(): Collection
     {
-        return $this->name ?? '';
+        return $this->artistMembers;
     }
-    public function getUrls(): array
+    public function addArtistMember(ArtistMember $am): self
     {
-        return $this->urls ?? [];
+        if (!$this->artistMembers->contains($am)) {
+            $this->artistMembers->add($am);
+            $am->setArtist($this);
+        }
+        return $this;
     }
-
-    public function setUrls(array $urls): self
+    public function removeArtistMember(ArtistMember $am): self
     {
-        $this->urls = $urls;
+        if ($this->artistMembers->removeElement($am)) {
+            if ($am->getArtist() === $this) $am->setArtist(null);
+        }
         return $this;
     }
 
-    /**
-     * @return Collection<int, Decade>
-     */
+    public function getArtistInstruments(): Collection
+    {
+        return $this->artistInstruments;
+    }
+    public function addArtistInstrument(ArtistInstrument $ai): self
+    {
+        if (!$this->artistInstruments->contains($ai)) {
+            $this->artistInstruments->add($ai);
+            $ai->setArtist($this);
+        }
+        return $this;
+    }
+    public function removeArtistInstrument(ArtistInstrument $ai): self
+    {
+        if ($this->artistInstruments->removeElement($ai)) {
+            if ($ai->getArtist() === $this) $ai->setArtist(null);
+        }
+        return $this;
+    }
+
     public function getDecades(): Collection
     {
         return $this->decades;
     }
-
     public function addDecade(Decade $decade): self
     {
-        if (!$this->decades->contains($decade)) {
-            $this->decades->add($decade);
-        }
-
+        if (!$this->decades->contains($decade)) $this->decades->add($decade);
         return $this;
     }
-
     public function removeDecade(Decade $decade): self
     {
         $this->decades->removeElement($decade);
-
         return $this;
     }
 
-    /**
-     * @return Collection<int, Instrument>
-     */
-    public function getInstruments(): Collection
+    public function getArtistSubGenres(): Collection
     {
-        return $this->instruments;
+        return $this->artistSubGenres;
     }
-
-    public function addInstrument(Instrument $instrument): self
+    public function addArtistSubGenre(ArtistSubGenre $asg): self
     {
-        if (!$this->instruments->contains($instrument)) {
-            $this->instruments->add($instrument);
+        if (!$this->artistSubGenres->contains($asg)) {
+            $this->artistSubGenres->add($asg);
+            $asg->setArtist($this);
         }
-
+        return $this;
+    }
+    public function removeArtistSubGenre(ArtistSubGenre $asg): self
+    {
+        if ($this->artistSubGenres->removeElement($asg)) $asg->setArtist(null);
         return $this;
     }
 
-    public function removeInstrument(Instrument $instrument): self
-    {
-        $this->instruments->removeElement($instrument);
-
-        return $this;
-    }
-
-    public function getBeginYear(): ?string
-    {
-        return $this->lifeSpan['begin'] ?? null;
-    }
-
-    public function getEndDate(): ?string
-    {
-        return $this->lifeSpan['end'] ?? null;
-    }
-
-    /**
-     * @return Collection<int, Release>
-     */
-    public function getReleases(): Collection
-    {
-        return $this->releases;
-    }
-
-    public function addRelease(Release $release): static
-    {
-        if (!$this->releases->contains($release)) {
-            $this->releases->add($release);
-            $release->setArtist($this);
-        }
-
-        return $this;
-    }
-
-    public function removeRelease(Release $release): static
-    {
-        if ($this->releases->removeElement($release)) {
-            // set the owning side to null (unless already changed)
-            if ($release->getArtist() === $this) {
-                $release->setArtist(null);
-            }
-        }
-
-        return $this;
-    }
+    
 }

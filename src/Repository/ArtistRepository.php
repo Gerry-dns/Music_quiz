@@ -18,32 +18,22 @@ class ArtistRepository extends ServiceEntityRepository
 
     /**
      * Récupère un ou plusieurs artistes au hasard
-     *
-     * @param int $limit
-     * @return Artist[]
      */
     public function findRandomArtists(int $limit = 1): array
     {
         $conn = $this->getEntityManager()->getConnection();
 
-        // Récupérer tous les IDs des artistes
         $sql = 'SELECT id FROM artist';
         $stmt = $conn->prepare($sql);
         $result = $stmt->executeQuery();
         $rows = $result->fetchAllAssociative();
 
-        if (!$rows) {
-            return [];
-        }
+        if (!$rows) return [];
 
-        // Extraire les IDs
         $allIds = array_column($rows, 'id');
-
-        // Mélanger les IDs et prendre le nombre demandé
         shuffle($allIds);
         $randomIds = array_slice($allIds, 0, $limit);
 
-        // Récupérer les artistes correspondants
         return $this->createQueryBuilder('a')
             ->andWhere('a.id IN (:ids)')
             ->setParameter('ids', $randomIds)
@@ -60,106 +50,65 @@ class ArtistRepository extends ServiceEntityRepository
     }
 
     /**
-     * Récupère les artistes par pays
+     * Récupère un artiste avec toutes ses relations importantes
      */
-    public function findByCountry(string $countryCode): array
+    public function getArtistFullData(int $id): ?Artist
     {
         return $this->createQueryBuilder('a')
-            ->join('a.country', 'c')
-            ->andWhere('c.id = :country') 
-            ->setParameter('code', $countryCode)
-            ->orderBy('a.name', 'ASC')
+            ->leftJoin('a.albums', 'al')->addSelect('al')
+            ->leftJoin('a.artistMembers', 'am')->addSelect('am')
+            ->leftJoin('a.artistSubGenres', 'asg')->addSelect('asg')
+            ->leftJoin('a.mainGenre', 'g')->addSelect('g')
+            ->leftJoin('a.country', 'c')->addSelect('c')
+            ->leftJoin('a.beginArea', 'city')->addSelect('city')
+            ->leftJoin('a.decades', 'd')->addSelect('d')
+            ->where('a.id = :id')
+            ->setParameter('id', $id)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /**
+     * Récupère le premier album d'un artiste
+     */
+    public function getFirstAlbum(Artist $artist): ?string
+    {
+        $albums = $artist->getAlbums()->toArray();
+        return !empty($albums) ? $albums[0]->getTitle() : null;
+    }
+
+    /**
+     * Récupère le dernier album d'un artiste
+     */
+    public function getLastAlbum(Artist $artist): ?string
+    {
+        $albums = $artist->getAlbums()->toArray();
+        return !empty($albums) ? $albums[array_key_last($albums)]->getTitle() : null;
+    }
+
+    /**
+     * Récupère des albums aléatoires pour générer des mauvaises réponses
+     */
+    public function getRandomAlbums(string $exclude, int $count = 3): array
+    {
+        $artists = $this->createQueryBuilder('a')
+            ->leftJoin('a.albums', 'al')
+            ->addSelect('al')
             ->getQuery()
             ->getResult();
-    }
-    /**
-     * Récupère les artistes par ville de formation
-     */
-    public function findDistinctBeginAreas(): array
-    {
-        $results = $this->createQueryBuilder('a')
-            ->select('DISTINCT a.beginArea')
-            ->where('a.beginArea IS NOT NULL')
-            ->orderBy('a.beginArea', 'ASC')
-            ->getQuery()
-            ->getScalarResult();
 
-        // Transformer en tableau simple
-        return array_map(fn($r) => $r['beginArea'], $results);
+        $allAlbums = [];
+        foreach ($artists as $artist) {
+            foreach ($artist->getAlbums() as $album) {
+                $title = $album->getTitle();
+                if ($title && $title !== $exclude) $allAlbums[] = $title;
+            }
+        }
+
+        shuffle($allAlbums);
+        return array_slice($allAlbums, 0, $count);
     }
 
-    /**
-     * Récupère les artistes par décennie
-     */
-    public function findByDecade(int $decade): array
-    {
-        $start = new \DateTime($decade . '-01-01');
-        $end   = new \DateTime(($decade + 9) . '-12-31');
-
-        return $this->createQueryBuilder('a')
-            ->andWhere('a.beginDate BETWEEN :start AND :end')
-            ->setParameter('start', $start)
-            ->setParameter('end', $end)
-            ->orderBy('a.beginDate', 'ASC')
-            ->getQuery()
-            ->getResult();
-    }
-
-    /**
-     * Récupère les artistes avec filtres combinés
-     */
-    public function findWithFilters(
-        ?string $country = null,
-        ?string $city = null,
-        ?int $decade = null,
-        ?string $genre = null,
-        ?string $name = null,
-        bool $random = false,
-        int $limit = 50
-    ): array {
-        $qb = $this->createQueryBuilder('a');
-
-        if ($country) {
-            $qb->join('a.country', 'c')
-                ->andWhere('c.id = :country')
-                ->setParameter('country', $country);
-        }
-
-        if ($city) {
-            $qb->andWhere('a.beginArea = :city')
-                ->setParameter('city', $city);
-        }
-
-        if ($decade) {
-            $start = new \DateTime($decade . '-01-01');
-            $end   = new \DateTime(($decade + 9) . '-12-31');
-
-            $qb->andWhere('a.beginDate BETWEEN :start AND :end')
-                ->setParameter('start', $start)
-                ->setParameter('end', $end);
-        }
-
-        if ($genre) {
-            $qb->join('a.mainGenre', 'g')
-                ->andWhere('g.name = :genre')
-                ->setParameter('genre', $genre);
-        }
-
-        if ($name) {
-            $qb->andWhere('a.name LIKE :name')
-                ->setParameter('name', '%' . $name . '%');
-        }
-
-        // Limiter le nombre de résultats
-        $qb->setMaxResults($limit);
-
-        // Trier aléatoirement si demandé, sinon par nom
-        if ($random) {
-            $qb->addOrderBy('RAND()');
-        } else {
-            $qb->orderBy('a.name', 'ASC');
-        }
-
-        return $qb->getQuery()->getResult();
-    }
+    // Les autres méthodes de filtrage (findWithFilters, findByCountry...) doivent être adaptées de la même façon
+    // pour utiliser les relations Albums et non plus JSON
 }
