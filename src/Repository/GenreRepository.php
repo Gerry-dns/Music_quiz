@@ -17,7 +17,7 @@ class GenreRepository extends ServiceEntityRepository
     }
 
     // Méthode pour récupérer un genre aléatoire sauf celui à exclure
-    public function getRandomGenre(string $exclude): string
+    public function getRandomGenreNames(string $exclude, int $limit = 3): array
     {
         $genres = $this->createQueryBuilder('g')
             ->where('g.name != :exclude')
@@ -26,11 +26,12 @@ class GenreRepository extends ServiceEntityRepository
             ->getResult();
 
         if (empty($genres)) {
-            return 'Genre Aléatoire';
+            return ['Genre Aléatoire'];
         }
 
-        $randomGenre = $genres[array_rand($genres)];
+        shuffle($genres);
+        $selected = array_slice($genres, 0, $limit);
 
-        return $randomGenre->getName();
+        return array_map(fn($g) => $g->getName(), $selected);
     }
 }

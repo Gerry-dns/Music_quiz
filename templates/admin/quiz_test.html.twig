@@ -11,15 +11,16 @@
 			<div id="quiz">
 				{% for q in questions %}
 					<div class="question-card" data-index="{{ loop.index0 }}" style="{% if loop.first %}display:block{% else %}display:none{% endif %}">
-						<h2>{{ q.text }}</h2>
-						{% set answers = [q.correctAnswer, q.wrongAnswer1, q.wrongAnswer2, q.wrongAnswer3]|shuffle %}
+						<h2>{{ q.getText() }}</h2>
+						{% set answers = [q.getCorrectAnswer(), q.getWrongAnswer1(), q.getWrongAnswer2(), q.getWrongAnswer3()]|filter(a => a)|shuffle %}
 						<ul class="answers">
 							{% for answer in answers %}
-								<li onclick="checkAnswer(this, '{{ q.correctAnswer|e('js') }}')">{{ answer }}</li>
+								<li onclick="checkAnswer(this, '{{ q.getCorrectAnswer()|e('js') }}')">{{ answer }}</li>
 							{% endfor %}
 						</ul>
 					</div>
 				{% endfor %}
+
 			</div>
 
 			<div id="feedback" class="feedback"></div>
@@ -31,76 +32,76 @@
 	</div>
 
 	 <script>
-	let currentIndex = 0;
-	const questions = document.querySelectorAll('.question-card');
-	const feedback = document.getElementById('feedback');
-	const nextBtn = document.getElementById('nextBtn');
-	const restartBtn = document.getElementById('restartBtn');
-	
-	function checkAnswer(el, correct) {
-	    if (el.textContent.trim() === correct.trim()) {
-	        el.classList.add('correct');
-	        feedback.textContent = "✅ Correct !";
-	        feedback.classList.remove('wrong');
-	        feedback.classList.add('correct');
-	    } else {
-	        el.classList.add('wrong');
-	        feedback.textContent = "❌ Mauvaise réponse. La bonne était : " + correct;
-	        feedback.classList.remove('correct');
-	        feedback.classList.add('wrong');
-	    }
-	
-	    // Désactive les autres réponses
-	    const items = el.parentNode.querySelectorAll('li');
-	    items.forEach(i => i.onclick = null);
-	
-	    // Affiche le bouton suivant
-	    nextBtn.style.display = 'inline-block';
-	}
-	
-	function nextQuestion() {
-	    // Masquer la question actuelle
-	    questions[currentIndex].style.display = 'none';
-	
-	    // Masquer le feedback et le bouton suivant
-	    feedback.textContent = '';
-	    feedback.classList.remove('correct', 'wrong');
-	    nextBtn.style.display = 'none';
-	
-	    // Passer à la question suivante
-	    currentIndex++;
-	    if (currentIndex < questions.length) {
-	        questions[currentIndex].style.display = 'block';
-	    } else {
-	        // Fin du quiz : ne supprime plus les questions, juste cacher
-	        questions.forEach(q => q.style.display = 'none');
-	        feedback.textContent = "🎉 Vous avez terminé le quiz !";
-	        restartBtn.style.display = 'inline-block';
-	    }
-	}
-	
-	
-	function restartQuiz() {
-	    currentIndex = 0;
-	    questions.forEach((q, i) => {
-	        q.style.display = i === 0 ? 'block' : 'none';
-	        const items = q.querySelectorAll('li');
-	        const correctAnswer = q.querySelector('h2').textContent;
-	        items.forEach(li => {
-	            li.classList.remove('correct', 'wrong');
-	            li.onclick = function() {
-	                checkAnswer(this, correctAnswer);
-	            };
-	        });
-	    });
-	
-	    feedback.textContent = '';
-	    feedback.classList.remove('correct', 'wrong');
-	
-	    nextBtn.style.display = 'none';
-	    restartBtn.style.display = 'none';
-	}
-	</script>
+		let currentIndex = 0;
+		const questions = document.querySelectorAll('.question-card');
+		const feedback = document.getElementById('feedback');
+		const nextBtn = document.getElementById('nextBtn');
+		const restartBtn = document.getElementById('restartBtn');
+		
+		function checkAnswer(el, correct) {
+		    if (el.textContent.trim() === correct.trim()) {
+		        el.classList.add('correct');
+		        feedback.textContent = "✅ Correct !";
+		        feedback.classList.remove('wrong');
+		        feedback.classList.add('correct');
+		    } else {
+		        el.classList.add('wrong');
+		        feedback.textContent = "❌ Mauvaise réponse. La bonne était : " + correct;
+		        feedback.classList.remove('correct');
+		        feedback.classList.add('wrong');
+		    }
+		
+		    // Désactive les autres réponses
+		    const items = el.parentNode.querySelectorAll('li');
+		    items.forEach(i => i.onclick = null);
+		
+		    // Affiche le bouton suivant
+		    nextBtn.style.display = 'inline-block';
+		}
+		
+		function nextQuestion() {
+		    // Masquer la question actuelle
+		    questions[currentIndex].style.display = 'none';
+		
+		    // Masquer le feedback et le bouton suivant
+		    feedback.textContent = '';
+		    feedback.classList.remove('correct', 'wrong');
+		    nextBtn.style.display = 'none';
+		
+		    // Passer à la question suivante
+		    currentIndex++;
+		    if (currentIndex < questions.length) {
+		        questions[currentIndex].style.display = 'block';
+		    } else {
+		        // Fin du quiz : ne supprime plus les questions, juste cacher
+		        questions.forEach(q => q.style.display = 'none');
+		        feedback.textContent = "🎉 Vous avez terminé le quiz !";
+		        restartBtn.style.display = 'inline-block';
+		    }
+		}
+		
+		
+		function restartQuiz() {
+		    currentIndex = 0;
+		    questions.forEach((q, i) => {
+		        q.style.display = i === 0 ? 'block' : 'none';
+		        const items = q.querySelectorAll('li');
+		        const correctAnswer = q.querySelector('h2').textContent;
+		        items.forEach(li => {
+		            li.classList.remove('correct', 'wrong');
+		            li.onclick = function() {
+		                checkAnswer(this, correctAnswer);
+		            };
+		        });
+		    });
+		
+		    feedback.textContent = '';
+		    feedback.classList.remove('correct', 'wrong');
+		
+		    nextBtn.style.display = 'none';
+		    restartBtn.style.display = 'none';
+		}
+		</script>
 
 	<style>
 		.quiz-container {

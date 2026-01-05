@@ -11,6 +11,8 @@ use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractDashboardController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use App\Service\MusicBrainzService;
+use App\Entity\ArtistMemberInstrument;
+
 
 class DashboardController extends AbstractDashboardController
 {
@@ -34,20 +36,20 @@ class DashboardController extends AbstractDashboardController
             $uniqueAlbums = [];
 
             foreach ($artist->getAlbums() as $album) {
-                if (!isset($album['id'])) {
+                if (!$album->getId()) {
                     continue;
                 }
-                $uniqueAlbums[$album['id']] = $album;
+                $uniqueAlbums[$album->getId()] = $album;
             }
 
-            // On réindexe proprement
+            // On réinitialise les albums
             foreach ($artist->getAlbums() as $existingAlbum) {
                 $artist->removeAlbum($existingAlbum);
             }
 
             // On ajoute les albums uniques
-            foreach ($uniqueAlbums as $albumData) {
-                $artist->addAlbum($albumData);
+            foreach ($uniqueAlbums as $albumObj) {
+                $artist->addAlbum($albumObj);
             }
         }
 
@@ -77,6 +79,7 @@ class DashboardController extends AbstractDashboardController
         yield MenuItem::linkToCrud('Artistes', 'fas fa-users', Artist::class);
         yield MenuItem::linkToCrud('Questions', 'fas fa-question', Questions::class);
         yield MenuItem::linkToRoute('Tester le Quiz', 'fas fa-flask', 'admin_quiz_test');
+        yield MenuItem::linkToCrud('Membres du groupe et leurs instruments', 'fas fa-music', ArtistMemberInstrument::class);
     }
 
     #[Route('/admin/quiz_test', name: 'admin_quiz_test')]

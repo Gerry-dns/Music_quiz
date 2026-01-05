@@ -33,9 +33,13 @@ class Country
     #[ORM\OneToMany(mappedBy: 'country', targetEntity: City::class, cascade: ['persist', 'remove'])]
     private Collection $cities;
 
+    #[ORM\OneToMany(mappedBy: 'country', targetEntity: Artist::class, cascade: ['persist', 'remove'])]
+    private Collection $artists;
+
     public function __construct()
     {
         $this->cities = new ArrayCollection();
+        $this->artists = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -119,6 +123,34 @@ class Country
         if ($this->cities->removeElement($city)) {
             if ($city->getCountry() === $this) {
                 $city->setCountry(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function getArtists(): Collection
+    {
+        return $this->artists;
+    }
+
+    // Ajouter un artiste
+    public function addArtist(Artist $artist): static
+    {
+        if (!$this->artists->contains($artist)) {
+            $this->artists->add($artist);
+            $artist->setCountry($this);
+        }
+
+        return $this;
+    }
+
+    // Supprimer un artiste
+    public function removeArtist(Artist $artist): static
+    {
+        if ($this->artists->removeElement($artist)) {
+            if ($artist->getCountry() === $this) {
+                $artist->setCountry(null);
             }
         }
 

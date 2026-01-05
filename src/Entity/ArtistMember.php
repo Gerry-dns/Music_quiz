@@ -19,23 +19,23 @@ class ArtistMember
     #[ORM\JoinColumn(nullable: false)]
     private ?Artist $artist = null;
 
-    // Nom du membre (ou relation vers Member si tu crées une entité Member séparée)
     // Relation vers Member
-    #[ORM\ManyToOne(targetEntity: Member::class)]
+    #[ORM\ManyToOne(targetEntity: Member::class, inversedBy: 'artistMemberships')]
     #[ORM\JoinColumn(nullable: false)]
     private ?Member $member = null;
 
-    #[ORM\Column(type: 'string', length: 10, nullable: true)]
-    private ?string $begin = null;
+    #[ORM\Column(type: 'date', nullable: true)]
+    private ?\DateTimeInterface $begin = null;
 
-    #[ORM\Column(type: 'string', length: 10, nullable: true)]
-    private ?string $end = null;
+    #[ORM\Column(type: 'date', nullable: true)]
+    private ?\DateTimeInterface $end = null;
+
 
     #[ORM\Column(type: 'boolean')]
     private bool $isOriginal = false;
 
     // Instruments joués dans ce groupe
-    #[ORM\OneToMany(mappedBy: 'member', targetEntity: ArtistMemberInstrument::class, cascade: ['persist', 'remove'])]
+    #[ORM\OneToMany(mappedBy: 'artistMember', targetEntity: ArtistMemberInstrument::class, cascade: ['persist', 'remove'])]
     private Collection $memberInstruments;
 
     public function __construct()
@@ -70,23 +70,23 @@ class ArtistMember
         return $this->member;
     }
 
-    public function getBegin(): ?string
+    public function getBegin(): ?\DateTimeInterface
     {
         return $this->begin;
     }
 
-    public function setBegin(?string $begin): self
+    public function setBegin(?\DateTimeInterface $begin): self
     {
         $this->begin = $begin;
         return $this;
     }
 
-    public function getEnd(): ?string
+    public function getEnd(): ?\DateTimeInterface
     {
         return $this->end;
     }
 
-    public function setEnd(?string $end): self
+    public function setEnd(?\DateTimeInterface $end): self
     {
         $this->end = $end;
         return $this;
@@ -128,5 +128,22 @@ class ArtistMember
             }
         }
         return $this;
+    }
+
+    public function __toString(): string
+    {
+        // On retourne le nom du membre + éventuellement son rôle ou instrument principal
+        return $this->getMember()?->getName() ?? 'Membre inconnu';
+    }
+
+    public function hasInstrument(string $instrumentName): bool
+    {
+        foreach ($this->getMemberInstruments() as $memberInstrument) {
+            $instr = $memberInstrument->getInstrument()?->getName();
+            if ($instr && strtolower($instr) === strtolower($instrumentName)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

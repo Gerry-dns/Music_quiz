@@ -1,0 +1,10 @@
+<ul class="ea-array-list" style="margin:0; padding-left:18px;">
+    {% for item in field.value %}
+        <li>
+            <strong>{{ item.label }}</strong> :
+            <a href="{{ item.url }}" target="_blank" rel="noopener">
+                {{ item.url }}
+            </a>
+        </li>
+    {% endfor %}
+</ul>

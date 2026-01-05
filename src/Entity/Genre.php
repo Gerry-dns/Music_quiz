@@ -22,7 +22,7 @@ class Genre
     private ?string $slug = null;
 
 
-    #[ORM\OneToMany(mappedBy: 'mainGenre', targetEntity: Artist::class)]
+   #[ORM\OneToMany(targetEntity: Artist::class, mappedBy: 'mainGenre')]
     private Collection $artists;
 
     public function __construct()

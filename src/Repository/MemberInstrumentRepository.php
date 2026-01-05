@@ -13,5 +13,17 @@ class MemberInstrumentRepository extends ServiceEntityRepository
         parent::__construct($registry, MemberInstrument::class);
     }
 
-    // Tu peux ajouter ici des méthodes personnalisées si nécessaire
+    /**
+     * Retourne tous les membres jouant un instrument donné
+     */
+    public function findByInstrumentName(string $instrumentName): array
+    {
+        return $this->createQueryBuilder('mi')
+            ->leftJoin('mi.member', 'm')->addSelect('m')
+            ->leftJoin('mi.instrument', 'i')->addSelect('i')
+            ->where('i.name = :instrument')
+            ->setParameter('instrument', $instrumentName)
+            ->getQuery()
+            ->getResult();
+    }
 }

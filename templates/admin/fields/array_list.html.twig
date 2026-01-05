@@ -11,7 +11,7 @@
                     <strong>{{ item.title }}</strong>
                     {% if item.firstReleaseDate is defined and item.firstReleaseDate %}
                         <small class="text-muted">
-                            ({{ item.firstReleaseDate|slice(0,4) }})
+                            ({{ item.firstReleaseDate|date('Y') }})
                         </small>
                     {% endif %}
                 </li>

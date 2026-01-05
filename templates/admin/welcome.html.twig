@@ -24,25 +24,44 @@
 						{% if artist.artistMembers %}
 							<p>
 								<strong>Membres:</strong>
-								  {{ artist.artistMembers|map(m => m.name)|join(', ') }}
+								{{ artist.artistMembers|map(m => m.getMember().getName())|join(', ') }}
 							</p>
 						{% endif %}
-						<strong>Pays:</strong>
-						{{ artist.country }}</p>
-					<strong>Ville de formation:</strong>
-					<p>{{ artist.beginArea }}</p>
-					{# <p>
-											<strong>Année de création:</strong>
-											{{ artist.lifeSpan.begin  }}</p>
-										<p> #}
-					<strong>Biographie:</strong>
-					{# {{ artist.biography }}</p> #}
-
-
-				{% if artist.albums %}
+					</p>
 					<p>
-						<strong>Albums:</strong>
-						{{ artist.albums|join(' | ') }}
+						<strong>Pays:</strong>
+						{{ artist.country ? artist.country.name : 'N/A' }}
+					</p>
+
+					<p>
+						<strong>Ville de formation:</strong>
+						{{ artist.beginArea ? artist.beginArea.name : 'N/A' }}
+					</p>
+
+					<p>
+						<strong>Année de création:</strong>
+						{{ artist.beginDate ? artist.beginDate|date('Y-m-d') : 'N/A' }}
+					</p>
+
+					{% if artist.endDate %}
+						<p>
+							<strong>Fin d'activité:</strong>
+							{{ artist.endDate|date('Y-m-d') }}
+						</p>
+					{% endif %}
+
+					<p>
+						<strong>Biographie:</strong>
+						{{ artist.summary ?: 'N/A' }}
+					</p>
+
+
+					{% if artist.albums %}
+						<p>
+							<strong>Albums:</strong>
+							{{ artist.albums|map(a => a.title ~ ' (' ~ (a.firstReleaseDate ? a.firstReleaseDate|date('Y') : 'N/A') ~ ')')|join(' | ') }}
+
+						</p>
 					{% endif %}
 					<div class="container">
 						<a href="{{ path('admin') }}" class="btn btn-primary mt-2">Changer d'artiste</a>

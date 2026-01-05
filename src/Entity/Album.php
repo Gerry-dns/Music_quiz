@@ -71,4 +71,9 @@ class Album
         $this->artist = $artist;
         return $this;
     }
+
+    public function getReleaseDate(): ?\DateTimeInterface
+    {
+        return $this->firstReleaseDate;
+    }
 }

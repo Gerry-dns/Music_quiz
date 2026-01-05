@@ -3,6 +3,7 @@
 namespace App\Controller\Admin;
 
 use App\Entity\Artist;
+use App\Form\ArtistMemberType;
 use App\Form\MemberType;
 use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
@@ -22,7 +23,7 @@ use App\Service\MusicBrainzService;
 use App\Service\ArtistPopulatorService;
 use App\Service\WikipediaByNameService;
 use App\Service\QuizGeneratorService;
-use App\Service\HttpFallbackService;
+use EasyCorp\Bundle\EasyAdminBundle\Field\CollectionField;
 
 class ArtistCrudController extends AbstractCrudController
 {
@@ -49,31 +50,41 @@ class ArtistCrudController extends AbstractCrudController
             AssociationField::new('beginArea', 'Ville de formation'),
             ImageField::new('coverImage', 'Image')->setBasePath('')->onlyOnDetail(),
 
-            // Champs complexes en lecture seule
-            ArrayField::new('biography', 'Biographie')
-                ->onlyOnDetail()
-                ->setTemplatePath('admin/fields/array_list.html.twig'),
+            CollectionField::new('members', 'Membres du groupe')
+                ->setEntryType(ArtistMemberType::class) // FormType pour chaque membre
+                ->allowAdd()
+                ->allowDelete()
+                ->onlyOnForms() // visible seulement dans le formulaire
+                ->setFormTypeOption('mapped', false),
+
+                      // Champs complexes en lecture seule
+            TextField::new('summary', 'Biographie')
+                ->onlyOnDetail(),
 
             ArrayField::new('albums', 'Albums')
                 ->onlyOnDetail()
                 ->setTemplatePath('admin/fields/array_list.html.twig'),
 
-            TextField::new('artistSubGenresAsString', 'Genres (pondérés)')
+            TextField::new('artistSubGenresAsString', 'Sous-genres')
                 ->onlyOnDetail(),
 
-            ArrayField::new('membersAsString', 'Membres')
-                ->onlyOnDetail(),
+            ArrayField::new('membersAsArray', 'Membres')
+                ->onlyOnDetail()
+                ->setTemplatePath('admin/fields/array_list.html.twig'),
 
 
             TextField::new('instrumentsAsString', 'Instruments')
                 ->onlyOnDetail(),
 
-            ArrayField::new('lifeSpan', 'Life Span')
+            ArrayField::new('lifeSpanAsArray', 'Durée')
                 ->onlyOnDetail()
                 ->setTemplatePath('admin/fields/array_list.html.twig'),
-            ArrayField::new('tracks', 'Tracks')
+
+            ArrayField::new('urlsForAdmin', 'URLs')
                 ->onlyOnDetail()
-                ->setTemplatePath('admin/fields/array_list.html.twig'),
+                ->setTemplatePath('admin/fields/urls_list.html.twig'),
+
+
         ];
 
 
@@ -123,7 +134,7 @@ class ArtistCrudController extends AbstractCrudController
             if ($artistName) {
                 $summaryData = $this->wikiService->fetchSummaryByName($artistName);
                 if ($summaryData) {
-                    $artist->setBiography([$summaryData['summary'] ?? null]);
+                    $artist->setSummary($wikiData['summary'] ?? null);
 
                     if (!empty($summaryData['image'])) {
                         $artist->setCoverImage($summaryData['image']);
@@ -131,8 +142,6 @@ class ArtistCrudController extends AbstractCrudController
                 }
             }
 
-            // Sauvegarde en base
-            $em->flush();
 
             $logger->info('Données MusicBrainz + Wikipédia récupérées', ['artistId' => $artist->getId(), 'mbid' => $mbid]);
             $this->addFlash('success', sprintf('Données récupérées pour "%s".', $artist->getName()));

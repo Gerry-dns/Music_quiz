@@ -2,11 +2,13 @@
 
 namespace App\Service;
 
+use App\Repository\CountryRepository;
+use Symfony\Component\Intl\Countries;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class MusicBrainzService
 {
-    public function __construct(private HttpClientInterface $client) {}
+    public function __construct(private HttpClientInterface $client, private CountryRepository $countryRepository) {}
 
     /**
      * Récupère toutes les données principales d'un artiste depuis MusicBrainz.
@@ -25,11 +27,12 @@ class MusicBrainzService
             'subGenres' => [],
             'aliases' => [],
             'lifeSpan' => [],
-            'beginArea' => null,
-            'country' => null,
+            'beginArea' => [],
+            'country' => [],
             'urls' => [],
         ];
-        
+
+
 
         try {
             $response = $this->client->request('GET', "https://musicbrainz.org/ws/2/artist/{$mbid}", [
@@ -43,7 +46,6 @@ class MusicBrainzService
             $data = $response->toArray();
             // dd($data);
 
-            // --- Genres ---
             // --- Genres ---
             $mainGenre = $data['type'] ?? ''; // fallback si pas de tags
             $subGenres = [];
@@ -68,8 +70,6 @@ class MusicBrainzService
                         ];
                     }
                 }
-
-                
             }
 
             // résultat final structuré
@@ -82,18 +82,36 @@ class MusicBrainzService
             ];
 
 
-            // --- Albums ---
+            // --- Albums (albums studio uniquement) ---
             $albums = [];
+
             foreach ($data['release-groups'] ?? [] as $release) {
-                if (($release['primary-type'] ?? '') === 'Album') {
-                    $albums[$release['id']] = [
-                        'id' => $release['id'] ?? null,
-                        'title' => $release['title'] ?? '',
-                        'firstReleaseDate' => $release['first-release-date'] ?? null,
-                    ];
+
+                // On ne garde que les albums
+                if (($release['primary-type'] ?? '') !== 'Album') {
+                    continue;
                 }
+
+                // On exclut compilations, lives, remasters, box sets, etc.
+                if (!empty($release['secondary-types'])) {
+                    continue;
+                }
+
+                // Sécurité minimale
+                if (empty($release['id']) || empty($release['title'])) {
+                    continue;
+                }
+
+                $albums[$release['id']] = [
+                    'id' => $release['id'],
+                    'title' => $release['title'],
+                    'firstReleaseDate' => $release['first-release-date'] ?? null,
+                ];
             }
-            $albums = array_values($albums); // ré-indexer
+
+            // ré-indexer proprement
+            $albums = array_values($albums);
+
 
             // --- Membres ---
             $members = [];
@@ -108,17 +126,44 @@ class MusicBrainzService
                 }
             }
 
-           
 
-            // --- URLs ---
-            $urls = [];
+
+            // --- URLs structurées ---
+            $urls = [
+                'official' => [],
+                'wikipedia' => [],
+                'wikidata' => null,
+                'social' => [],
+            ];
+
             foreach ($data['relations'] ?? [] as $rel) {
-                if (!empty($rel['url']['resource'])) {
-                    $key = strtolower(str_replace(' ', '_', $rel['type']));
-                    $urls[$key] = $rel['url']['resource'];
+                if (empty($rel['url']['resource'])) {
+                    continue;
+                }
+
+                $type = strtolower($rel['type']);
+                $url  = $rel['url']['resource'];
+
+                switch ($type) {
+                    case 'wikipedia':
+                        // ex: https://en.wikipedia.org/wiki/Radiohead
+                        $urls['wikipedia'][] = $url;
+                        break;
+
+                    case 'wikidata':
+                        // ex: https://www.wikidata.org/wiki/Q12345
+                        $urls['wikidata'] = $url;
+                        break;
+
+                    case 'official homepage':
+                        $urls['official'][] = $url;
+                        break;
+
+                    default:
+                        // réseaux sociaux, autres ressources
+                        $urls['social'][$type][] = $url;
                 }
             }
-
             // --- Alias ---
             $aliases = array_map(fn($a) => $a['name'], $data['aliases'] ?? []);
 
@@ -131,7 +176,18 @@ class MusicBrainzService
 
             // --- Begin area et pays ---
             $beginArea = $data['begin-area']['name'] ?? null;
-            $country = $data['area']['name'] ?? null;
+
+
+            $countryCode = $data['country'] ?? null;
+            $country = null;
+
+            if ($countryCode) {
+                try {
+                    $country = Countries::getName($countryCode);
+                } catch (\Symfony\Component\Intl\Exception\MissingResourceException $e) {
+                    $country = null; // code pays inconnu
+                }
+            }
 
             // --- Fusionner toutes les données ---
             $artistData = array_merge($artistData, [
@@ -146,6 +202,8 @@ class MusicBrainzService
                 'beginArea' => $beginArea,
                 'country' => $country,
                 'urls' => $urls,
+                'summary'    => null,
+                'image'      => null,
             ]);
             // dd($artistData);
         } catch (\Exception $e) {

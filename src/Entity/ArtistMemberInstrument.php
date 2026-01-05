@@ -12,11 +12,11 @@ class ArtistMemberInstrument
 
     #[ORM\ManyToOne(targetEntity: ArtistMember::class, inversedBy: 'memberInstruments')]
     #[ORM\JoinColumn(nullable: false)]
-    private ArtistMember $member;
+    private ?ArtistMember $artistMember = null;
 
     #[ORM\ManyToOne(targetEntity: Instrument::class, inversedBy: 'artistMemberInstruments')]
     #[ORM\JoinColumn(nullable: false)]
-    private Instrument $instrument;
+    private ?Instrument $instrument = null;
 
    #[ORM\Column(name: 'is_primary', type: 'boolean')]
 private bool $primary = false;
@@ -27,11 +27,11 @@ private bool $primary = false;
     }
     public function getArtistMember(): ArtistMember
     {
-        return $this->member;
+        return $this->artistMember ;
     }
-    public function setArtistMember(?ArtistMember $member): self
+    public function setArtistMember(?ArtistMember $artistMember): self
     {
-        $this->member = $member;
+        $this->artistMember = $artistMember;
         return $this;
     }
     public function getInstrument(): Instrument

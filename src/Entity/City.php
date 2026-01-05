@@ -20,7 +20,7 @@ class City
 
      // Relation vers Country
     #[ORM\ManyToOne(targetEntity: Country::class, inversedBy: 'cities')]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: true)]
     private ?Country $country = null;
 
     #[ORM\OneToMany(mappedBy: 'beginArea', targetEntity: Artist::class)]

@@ -6,9 +6,6 @@ use App\Entity\ArtistInstrument;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
-/**
- * @extends ServiceEntityRepository<ArtistInstrument>
- */
 class ArtistInstrumentRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
@@ -16,28 +13,31 @@ class ArtistInstrumentRepository extends ServiceEntityRepository
         parent::__construct($registry, ArtistInstrument::class);
     }
 
-    //    /**
-    //     * @return ArtistInstrument[] Returns an array of ArtistInstrument objects
-    //     */
-    //    public function findByExampleField($value): array
-    //    {
-    //        return $this->createQueryBuilder('a')
-    //            ->andWhere('a.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->orderBy('a.id', 'ASC')
-    //            ->setMaxResults(10)
-    //            ->getQuery()
-    //            ->getResult()
-    //        ;
-    //    }
+    /**
+     * Récupère tous les instruments d’un artiste avec le count
+     */
+    public function findInstrumentsByArtist(int $artistId): array
+    {
+        return $this->createQueryBuilder('ai')
+            ->join('ai.instrument', 'i')
+            ->addSelect('i')
+            ->where('ai.artist = :artistId')
+            ->setParameter('artistId', $artistId)
+            ->getQuery()
+            ->getResult();
+    }
 
-    //    public function findOneBySomeField($value): ?ArtistInstrument
-    //    {
-    //        return $this->createQueryBuilder('a')
-    //            ->andWhere('a.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->getQuery()
-    //            ->getOneOrNullResult()
-    //        ;
-    //    }
+    /**
+     * Récupère un instrument précis pour un artiste
+     */
+    public function findOneByArtistAndInstrument(int $artistId, int $instrumentId): ?ArtistInstrument
+    {
+        return $this->createQueryBuilder('ai')
+            ->where('ai.artist = :artistId')
+            ->andWhere('ai.instrument = :instrumentId')
+            ->setParameter('artistId', $artistId)
+            ->setParameter('instrumentId', $instrumentId)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 }

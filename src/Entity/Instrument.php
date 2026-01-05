@@ -17,14 +17,18 @@ class Instrument
 
     #[ORM\Column(type: "string", length: 100, unique: true)]
     private $name;
-
-    #[ORM\OneToMany(mappedBy: 'instrument', targetEntity: ArtistMemberInstrument::class)]
-    private Collection $artistMemberInstruments;
     /**
      * @var Collection<int, ArtistInstrument>
      */
     #[ORM\OneToMany(targetEntity: ArtistInstrument::class, mappedBy: 'instrument')]
     private Collection $artistInstruments;
+
+    /**
+     * Instruments joués par les membres dans un groupe (ArtistMemberInstrument)
+     * @var Collection<int, ArtistMemberInstrument>
+     */
+    #[ORM\OneToMany(targetEntity: ArtistMemberInstrument::class, mappedBy: 'instrument', cascade: ['persist', 'remove'])]
+    private Collection $artistMemberInstruments;
 
     public function __construct()
     {
@@ -74,5 +78,33 @@ class Instrument
         }
 
         return $this;
+    }
+
+    /**
+     * @return Collection<int, ArtistMemberInstrument>
+     */
+    public function getArtistMemberInstruments(): Collection
+    {
+        return $this->artistMemberInstruments;
+    }
+
+    public function addArtistMemberInstrument(ArtistMemberInstrument $ami): self
+    {
+        if (!$this->artistMemberInstruments->contains($ami)) {
+            $this->artistMemberInstruments->add($ami);
+            $ami->setInstrument($this);
+        }
+        return $this;
+    }
+
+    public function removeArtistMemberInstrument(ArtistMemberInstrument $ami): self
+    {
+        $this->artistMemberInstruments->removeElement($ami);
+        return $this;
+    }
+
+    public function __toString(): string
+    {
+        return $this->getName() ?? 'Instrument inconnu';
     }
 }

@@ -10,12 +10,12 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class QuizController extends AbstractController
 {
-    #[Route('/quiz', name: 'app_quiz')]
+    #[Route('/admin/quiz_test', name: 'admin_quiz_test')]
     public function index(EntityManagerInterface $em): Response
     {
-        $questions = $em->getRepository(Questions::class)->findAll();
-        $questions = $questions[0] ?? null;
-        return $this->render('quiz/index.html.twig', [
+        $questions = $em->getRepository(Questions::class)->findBy([], ['artist' => 'ASC', 'id' => 'ASC']);
+
+        return $this->render('admin/quiz_test.html.twig', [
             'questions' => $questions,
         ]);
     }
